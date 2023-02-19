@@ -350,19 +350,25 @@ namespace p3ppc.manualSkillInheritance
             if (_selectedSkill == Skill.None)
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
 
-            if (_input->HasFlag(Input.Up))
+            if (_input->HasFlag(Input.Up) && _currentSkills.Count > 1)
             {
+                _ui.PlaySoundEffect(SoundEffect.SelectionChanged);
                 if (_selectedSkillIndex > 0)
                     _selectedSkillIndex--;
+                else
+                    _selectedSkillIndex = _currentSkills.Count - 1;
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Down))
+            if (_input->HasFlag(Input.Down) && _currentSkills.Count > 1)
             {
+                _ui.PlaySoundEffect(SoundEffect.SelectionChanged);
                 if (_selectedSkillIndex < _currentSkills.Count - 1)
                     _selectedSkillIndex++;
+                else
+                    _selectedSkillIndex = 0;
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Confirm))
+            if (_input->HasFlag(Input.Confirm) )
             {
                 var currentSkills = persona->Skills;
                 bool alreadyHasSkill = false;
@@ -379,6 +385,8 @@ namespace p3ppc.manualSkillInheritance
                 }
                 if (!alreadyHasSkill && emptySkillIndex != -1)
                 {
+                    _ui.PlaySoundEffect(SoundEffect.Confirm);
+
                     (&_currentPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)_selectedSkill;
                     persona->Skills[emptySkillIndex] = (short)_selectedSkill;
                     Utils.LogDebug($"Added {_selectedSkill} to {persona->Id}");
@@ -391,12 +399,14 @@ namespace p3ppc.manualSkillInheritance
                 }
                 else
                 {
-                    Utils.LogError($"Cannot add {_selectedSkill} to {persona->Id}");
+                    _ui.PlaySoundEffect(SoundEffect.Error);
+                    Utils.LogDebug($"Cannot add {_selectedSkill} to {persona->Id}");
                 }
             }
 
             if (_input->HasFlag(Input.Escape))
             {
+                _ui.PlaySoundEffect(SoundEffect.Back);
                 var mask = _currentPersona->SkillsInfo.NewSkillsMask;
                 bool skillRemoved = false;
                 for (int i = 7; i >= 0; i--)

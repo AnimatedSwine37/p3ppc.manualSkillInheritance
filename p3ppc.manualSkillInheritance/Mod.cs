@@ -11,6 +11,7 @@ using static p3ppc.manualSkillInheritance.FusionMenu;
 using static p3ppc.manualSkillInheritance.PersonaMenu;
 using static p3ppc.manualSkillInheritance.Personas;
 using static p3ppc.manualSkillInheritance.Skills;
+using static p3ppc.manualSkillInheritance.UI;
 using IReloadedHooks = Reloaded.Hooks.ReloadedII.Interfaces.IReloadedHooks;
 
 namespace p3ppc.manualSkillInheritance
@@ -52,7 +53,7 @@ namespace p3ppc.manualSkillInheritance
         private readonly IModConfig _modConfig;
 
         private IMemory _memory;
-        
+
         private UI _ui;
 
         private IAsmHook _setInheritanceHook;
@@ -74,6 +75,7 @@ namespace p3ppc.manualSkillInheritance
         private int _selectedSkillIndex = 0;
         private PersonaDisplayInfo* _currentPersona;
         private Skill _selectedSkill;
+        private List<Skill>? _currentSkills;
 
         private nuint _allowFusionConfirmation;
 
@@ -303,6 +305,7 @@ namespace p3ppc.manualSkillInheritance
         {
             Utils.LogDebug($"Opening choose inheritance menu for {info->ResultPersona->Persona.Id}");
             _currentPersona = null;
+            _currentSkills = null;
             _selectedSkillIndex = 0;
             _selectedSkill = Skill.None;
             _inSkillSelection = true;
@@ -312,9 +315,9 @@ namespace p3ppc.manualSkillInheritance
         {
             if (_currentPersona == null || (!_inSkillSelection && _currentPersona == null))
                 return InheritanceState.NotInMenu;
-            
+
             var persona = &info->ResultPersona->Persona;
-            
+
             // Back in the menu after selecting no to the confirmation
             if (!_inSkillSelection && _currentPersona != null)
             {
@@ -333,29 +336,33 @@ namespace p3ppc.manualSkillInheritance
                 return InheritanceState.ChoosingSkills;
             }
 
-            if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
+            if(_currentSkills == null)
             {
-                Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
-                _inSkillSelection = false;
-                return InheritanceState.DoneChoosingSkills;
+                if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
+                {
+                    Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
+                    _inSkillSelection = false;
+                    return InheritanceState.DoneChoosingSkills;
+                }
+                _currentSkills = skills;
             }
 
             if (_selectedSkill == Skill.None)
-                _selectedSkill = skills[_selectedSkillIndex];
-            
+                _selectedSkill = _currentSkills[_selectedSkillIndex];
+
             if (_input->HasFlag(Input.Up))
             {
                 if (_selectedSkillIndex > 0)
                     _selectedSkillIndex--;
-                _selectedSkill = skills[_selectedSkillIndex];
-            } 
-            if(_input->HasFlag(Input.Down))
-            {
-                if (_selectedSkillIndex < skills.Count - 1)
-                    _selectedSkillIndex++;
-                _selectedSkill = skills[_selectedSkillIndex];
+                _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if(_input->HasFlag(Input.Confirm))
+            if (_input->HasFlag(Input.Down))
+            {
+                if (_selectedSkillIndex < _currentSkills.Count - 1)
+                    _selectedSkillIndex++;
+                _selectedSkill = _currentSkills[_selectedSkillIndex];
+            }
+            if (_input->HasFlag(Input.Confirm))
             {
                 var currentSkills = persona->Skills;
                 bool alreadyHasSkill = false;
@@ -370,18 +377,19 @@ namespace p3ppc.manualSkillInheritance
                         break;
                     }
                 }
-                if(!alreadyHasSkill && emptySkillIndex != -1)
+                if (!alreadyHasSkill && emptySkillIndex != -1)
                 {
                     (&_currentPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)_selectedSkill;
                     persona->Skills[emptySkillIndex] = (short)_selectedSkill;
                     Utils.LogDebug($"Added {_selectedSkill} to {persona->Id}");
-                    if((_currentPersona->SkillsInfo.NewSkillsMask & (1 << emptySkillIndex+1)) == 0)
+                    if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << emptySkillIndex + 1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
                         _inSkillSelection = false;
                         return InheritanceState.DoneChoosingSkills;
                     }
-                } else
+                }
+                else
                 {
                     Utils.LogError($"Cannot add {_selectedSkill} to {persona->Id}");
                 }
@@ -391,9 +399,9 @@ namespace p3ppc.manualSkillInheritance
             {
                 var mask = _currentPersona->SkillsInfo.NewSkillsMask;
                 bool skillRemoved = false;
-                for(int i = 7; i >= 0; i--)
+                for (int i = 7; i >= 0; i--)
                 {
-                    if((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
+                    if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
                     {
                         Utils.LogDebug($"Removing {(Skill)persona->Skills[i]} from {persona->Id}");
                         persona->Skills[i] = -1;
@@ -402,7 +410,7 @@ namespace p3ppc.manualSkillInheritance
                         break;
                     }
                 }
-                if(!skillRemoved)
+                if (!skillRemoved)
                 {
                     Utils.LogDebug("Cancelling inheritance choice");
                     _inSkillSelection = false;
@@ -423,14 +431,49 @@ namespace p3ppc.manualSkillInheritance
             if (_currentPersona == null)
                 _currentPersona = &info->Persona;
 
-            if(_ui.RenderSkillHelp != null)
-                _ui.RenderSkillHelp(0x43040000437c0000, 0, 0xFF, _selectedSkill);
+            if (_ui.RenderSkillHelp != null)
+                _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
+
+            if (_ui.RenderSkill != null && _currentSkills != null)
+            {
+                PersonaDisplayInfo persona = new PersonaDisplayInfo();
+                persona.SkillsInfo.NumSkills = 1;
+                Position pos = new Position { X = 19, Y = 64 };
+                // Work out where to start displaying stuff so skills can scroll
+                bool startFound = false;
+                int startIndex = _selectedSkillIndex;
+                for(int i = 0; i < 2; i++)
+                {
+                    if (startIndex - 1 >= 0)
+                        startIndex--;
+                    else
+                    {
+                        startFound = true;
+                        break;
+                    }
+                }
+                if(!startFound)
+                {
+                    while (_currentSkills.Count - startIndex < 5 && startIndex != 0)
+                        startIndex--;
+                }
+                // Display the skills (up to 5)
+                for (int i = startIndex; i < startIndex + 5; i++)
+                {
+                    if (i >= _currentSkills.Count) break;
+                    persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
+                    persona.SelectedSlot = i == _selectedSkillIndex ? 0 : -1;
+                    _ui.RenderSkill(pos, 0, 0xFF, &persona, 0, 0);
+                    pos.Y += 17;
+                }
+            }
         }
 
         private void ResultsMenuOpening()
         {
             Utils.LogDebug("Opening results menu");
             _currentPersona = null;
+            _currentSkills = null;
             _inSkillSelection = false;
         }
 
@@ -452,7 +495,7 @@ namespace p3ppc.manualSkillInheritance
 
         [Function(CallingConventions.Microsoft)]
         private delegate void StartChooseInheritanceDelegate(FusionMenuInfo* info);
-        
+
         [Function(CallingConventions.Microsoft)]
         private delegate void LogInheritanceDelegate(nuint skillsListAddr, Persona* personaPtr);
 

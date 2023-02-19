@@ -19,6 +19,9 @@ namespace p3ppc.manualSkillInheritance
         [StructLayout(LayoutKind.Explicit)]
         internal struct PersonaDisplayInfo
         {
+            [FieldOffset(4)]
+            internal int SelectedSlot;
+            
             [FieldOffset(8)]
             internal PersonaSkillsDisplayInfo SkillsInfo;
         }

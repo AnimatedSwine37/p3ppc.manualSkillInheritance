@@ -3,7 +3,6 @@ using p3ppc.manualSkillInheritance.Template;
 using Reloaded.Hooks.Definitions;
 using Reloaded.Hooks.Definitions.Enums;
 using Reloaded.Hooks.Definitions.X64;
-using Reloaded.Hooks.ReloadedII.Interfaces;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Memory.Sources;
 using Reloaded.Mod.Interfaces;
@@ -62,10 +61,12 @@ namespace p3ppc.manualSkillInheritance
         private IAsmHook _personaMenuDisplayHook;
         private IAsmHook _addInheritedSkillsHook;
         private IAsmHook _skillHelpDescriptionHook;
+        private IAsmHook _resultsMenuOpeningHook;
         private IReverseWrapper<LogInheritanceDelegate> _logInheritanceReverseWrapper;
         private IReverseWrapper<StartChooseInheritanceDelegate> _startChooseInheritanceReverseWrapper;
         private IReverseWrapper<ChooseInheritanceDelegate> _chooseInheritanceReverseWrapper;
         private IReverseWrapper<PersonaMenuDisplayDelegate> _personaMenuDisplayReverseWrapper;
+        private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
         private Input* _input;
 
         private bool _inSkillSelection = false;
@@ -74,9 +75,11 @@ namespace p3ppc.manualSkillInheritance
         private PersonaDisplayInfo* _currentPersona;
         private Skill _selectedSkill;
 
+        private nuint _allowFusionConfirmation;
+
         public Mod(ModContext context)
         {
-            Debugger.Launch();
+            //Debugger.Launch();
             _modLoader = context.ModLoader;
             _hooks = context.Hooks;
             _logger = context.Logger;
@@ -91,11 +94,13 @@ namespace p3ppc.manualSkillInheritance
             var startupScannerController = _modLoader.GetController<IStartupScanner>();
             if (startupScannerController == null || !startupScannerController.TryGetTarget(out var startupScanner))
             {
-                Utils.LogError($"Unable to get controller for Reloaded SigScan Library, aborting initialisation");
+                Utils.LogError($"Unable to get controller for Reloaded SigScan Library, stuff won't work :(");
                 return;
             }
 
             _ui = new UI(startupScanner, _hooks);
+
+            _allowFusionConfirmation = _memory.Allocate(1);
 
             //PList<int>.Initialise(startupScanner, _hooks);
 
@@ -103,7 +108,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find SetInheritance, aborting initialisation");
+                    Utils.LogError($"Unable to find SetInheritance, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found SetInheritance at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -126,7 +131,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find FusionResultsConfirm, aborting initialisation");
+                    Utils.LogError($"Unable to find FusionResultsConfirm, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found FusionResultsConfirm at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -134,6 +139,8 @@ namespace p3ppc.manualSkillInheritance
                 string[] function =
                 {
                     "use64",
+                    $"cmp [qword {_allowFusionConfirmation}], byte 1",
+                    "je endHook", // Let the confirmation go through as we've already chosen skills
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r11",
                     "mov rcx, rbx",
                     "sub rsp, 32",
@@ -142,7 +149,8 @@ namespace p3ppc.manualSkillInheritance
                     "pop r11\npop r9\npop r8\npop rdx\npop rcx\npop rax",
                     "add rsp, 0x70",
                     "pop rdi",
-                    "ret"
+                    "ret",
+                    "label endHook"
                 };
                 _fusionResultsConfirmHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
@@ -151,7 +159,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find FusionResultsMenu, aborting initialisation");
+                    Utils.LogError($"Unable to find FusionResultsMenu, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found FusionResultsMenu at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -166,11 +174,24 @@ namespace p3ppc.manualSkillInheritance
                     "sub rsp, 32",
                     $"{_hooks.Utilities.GetAbsoluteCallMnemonics(ChooseInheritanceMenu, out _chooseInheritanceReverseWrapper)}",
                     "add rsp, 32",
-                    "cmp eax, 0",
-                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
-                    "je endHook", // If not in the skill selection menu go on with the normal stuff
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx",
+                    // Check what we should do
+                    $"cmp eax, {(int)InheritanceState.NotInMenu}",
+                    "je continueNormally", // If not in the skill selection menu go on with the normal stuff
+                    $"cmp eax, {(int)InheritanceState.ChoosingSkills}",
+                    "je retFunction",
+                    //// Go to the fusion confirmation
+                    $"mov [qword {_allowFusionConfirmation}], byte 1", // We want to allow the confirmation
+                    "jmp endHook",
+                    // Return since we're in the skill selection
+                    "label retFunction",
+                    "pop rax",
                     "ret",
-                    "label endHook"
+                    // Continue with normal stuff
+                    "label continueNormally",
+                    $"mov [qword {_allowFusionConfirmation}], byte 0", // We want to capture confirmation and take it into the skill selection menu
+                    "label endHook",
+                    "pop rax",
                 };
                 _fusionResultsHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
@@ -179,7 +200,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find PersonaMenuDisplay, aborting initialisation");
+                    Utils.LogError($"Unable to find PersonaMenuDisplay, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found PersonaMenuDisplay at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -201,7 +222,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find AddInheritedSkills, aborting initialisation");
+                    Utils.LogError($"Unable to find AddInheritedSkills, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found AddInheritedSkills at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -218,7 +239,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find RenderSkillHelpDescription, aborting initialisation");
+                    Utils.LogError($"Unable to find RenderSkillHelpDescription, stuff won't work :(");
                     return;
                 }
                 Utils.LogDebug($"Found RenderSkillHelpDescription at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -233,12 +254,33 @@ namespace p3ppc.manualSkillInheritance
                 _memory.Write(result.Offset + Utils.BaseAddress + 9, (byte)0x8E); // Change the jz to jle so it doesn't write descriptions for -1 skills
             });
 
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 8D 43 ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find OpenFusionResults, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found OpenFusionResults at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
+                    "sub rsp, 40",
+                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(ResultsMenuOpening, out _resultsMenuOpeningReverseWrapper)}",
+                    "add rsp, 40",
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
+                };
+                _resultsMenuOpeningHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+
         }
 
         private void LogInheritance(nuint skillsListAddr, Persona* personaPtr)
         {
             Persona persona = *personaPtr;
-            //Utils.LogDebug($"Persona: {persona.Id} lvl {persona.Level} ({persona.Exp} exp) is{(persona.IsRegistered ? "" : " not")} registered");
             string baseSkills = "";
             for (int i = 0; i < 8; i++)
             {
@@ -266,18 +308,36 @@ namespace p3ppc.manualSkillInheritance
             _inSkillSelection = true;
         }
 
-        private bool ChooseInheritanceMenu(FusionMenuInfo* info)
+        private InheritanceState ChooseInheritanceMenu(FusionMenuInfo* info)
         {
-            if (!_inSkillSelection || _currentPersona == null)
-                return false;
-
+            if (_currentPersona == null || (!_inSkillSelection && _currentPersona == null))
+                return InheritanceState.NotInMenu;
+            
             var persona = &info->ResultPersona->Persona;
+            
+            // Back in the menu after selecting no to the confirmation
+            if (!_inSkillSelection && _currentPersona != null)
+            {
+                var mask = _currentPersona->SkillsInfo.NewSkillsMask;
+                for (int i = 7; i >= 0; i--)
+                {
+                    if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
+                    {
+                        Utils.LogDebug($"Removing {(Skill)persona->Skills[i]} from {persona->Id}");
+                        persona->Skills[i] = -1;
+                        (&_currentPersona->SkillsInfo.Skills)[i].Id = -1;
+                        break;
+                    }
+                }
+                _inSkillSelection = true;
+                return InheritanceState.ChoosingSkills;
+            }
 
             if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
             {
                 Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
                 _inSkillSelection = false;
-                return true;
+                return InheritanceState.DoneChoosingSkills;
             }
 
             if (_selectedSkill == Skill.None)
@@ -318,8 +378,8 @@ namespace p3ppc.manualSkillInheritance
                     if((_currentPersona->SkillsInfo.NewSkillsMask & (1 << emptySkillIndex+1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
-                        // TODO
-                        // return 3; // Return 3 to indicate that fusion selection is done and to continue (make an enum)
+                        _inSkillSelection = false;
+                        return InheritanceState.DoneChoosingSkills;
                     }
                 } else
                 {
@@ -346,11 +406,13 @@ namespace p3ppc.manualSkillInheritance
                 {
                     Utils.LogDebug("Cancelling inheritance choice");
                     _inSkillSelection = false;
-                    return true; // Still return true so we "absorb" the back input (could also just change the actual _input, not sure it really matters which way we do it)
+                    _currentPersona = null;
+                    *_input &= ~Input.Escape; // Absorb the escape so the whole results menu doesn't close
+                    return InheritanceState.NotInMenu;
                 }
             }
 
-            return true;
+            return InheritanceState.ChoosingSkills;
         }
 
         private void PersonaMenuDisplay(PersonaMenuInfo* info)
@@ -365,11 +427,28 @@ namespace p3ppc.manualSkillInheritance
                 _ui.RenderSkillHelp(0x43040000437c0000, 0, 0xFF, _selectedSkill);
         }
 
+        private void ResultsMenuOpening()
+        {
+            Utils.LogDebug("Opening results menu");
+            _currentPersona = null;
+            _inSkillSelection = false;
+        }
+
+        private enum InheritanceState
+        {
+            NotInMenu,
+            ChoosingSkills,
+            DoneChoosingSkills,
+        }
+
+        [Function(CallingConventions.Microsoft)]
+        private delegate void ResultsMenuOpeningDelegate();
+
         [Function(CallingConventions.Microsoft)]
         private delegate void PersonaMenuDisplayDelegate(PersonaMenuInfo* info);
 
         [Function(CallingConventions.Microsoft)]
-        private delegate bool ChooseInheritanceDelegate(FusionMenuInfo* info);
+        private delegate InheritanceState ChooseInheritanceDelegate(FusionMenuInfo* info);
 
         [Function(CallingConventions.Microsoft)]
         private delegate void StartChooseInheritanceDelegate(FusionMenuInfo* info);

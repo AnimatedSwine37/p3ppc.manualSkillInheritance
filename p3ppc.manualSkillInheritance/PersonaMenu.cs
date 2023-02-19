@@ -23,21 +23,27 @@ namespace p3ppc.manualSkillInheritance
             internal PersonaSkillsDisplayInfo SkillsInfo;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
+        [StructLayout(LayoutKind.Explicit)]
         internal struct PersonaSkillsDisplayInfo
         {
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            [FieldOffset(0)]
             internal PersonaDisplaySkill Skills;
 
+            [FieldOffset(96)]
             internal short NumSkills;
 
+            [FieldOffset(98)]
             internal short NewSkillsMask;
 
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            [FieldOffset(100)]
             internal PersonaDisplaySkill NextSkills;
 
+            [FieldOffset(484)]
             internal fixed short NextSkillsLevels[32];
 
+            [FieldOffset(548)]
             internal short NumNextLevels;
         }
 

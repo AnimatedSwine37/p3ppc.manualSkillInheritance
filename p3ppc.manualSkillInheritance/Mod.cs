@@ -270,12 +270,6 @@ namespace p3ppc.manualSkillInheritance
         {
             if (!_inSkillSelection || _currentPersona == null)
                 return false;
-            if(_input->HasFlag(Input.Escape))
-            {
-                Utils.LogDebug("Cancelling inheritance choice");
-                _inSkillSelection = false;
-                return true; // Still return true so we "absorb" the back input (could also just change the actual _input, not sure it really matters which way we do it)
-            }
 
             var persona = &info->ResultPersona->Persona;
 
@@ -321,12 +315,41 @@ namespace p3ppc.manualSkillInheritance
                     (&_currentPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)_selectedSkill;
                     persona->Skills[emptySkillIndex] = (short)_selectedSkill;
                     Utils.LogDebug($"Added {_selectedSkill} to {persona->Id}");
+                    if((_currentPersona->SkillsInfo.NewSkillsMask & (1 << emptySkillIndex+1)) == 0)
+                    {
+                        Utils.LogDebug($"Done selecting skills for {persona->Id}");
+                        // TODO
+                        // return 3; // Return 3 to indicate that fusion selection is done and to continue (make an enum)
+                    }
                 } else
                 {
                     Utils.LogError($"Cannot add {_selectedSkill} to {persona->Id}");
                 }
             }
-            
+
+            if (_input->HasFlag(Input.Escape))
+            {
+                var mask = _currentPersona->SkillsInfo.NewSkillsMask;
+                bool skillRemoved = false;
+                for(int i = 7; i >= 0; i--)
+                {
+                    if((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
+                    {
+                        Utils.LogDebug($"Removing {(Skill)persona->Skills[i]} from {persona->Id}");
+                        persona->Skills[i] = -1;
+                        (&_currentPersona->SkillsInfo.Skills)[i].Id = -1;
+                        skillRemoved = true;
+                        break;
+                    }
+                }
+                if(!skillRemoved)
+                {
+                    Utils.LogDebug("Cancelling inheritance choice");
+                    _inSkillSelection = false;
+                    return true; // Still return true so we "absorb" the back input (could also just change the actual _input, not sure it really matters which way we do it)
+                }
+            }
+
             return true;
         }
 

@@ -8,8 +8,9 @@ namespace p3ppc.manualSkillInheritance
 {
     internal class Skills
     {
-        public enum Skill : int
+        public enum Skill : short
         {
+            None = -1,
             Slash_Attack = 0000,
             Agi = 0001,
             Agilao = 0002,

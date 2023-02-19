@@ -5,9 +5,11 @@ using Reloaded.Hooks.Definitions.Enums;
 using Reloaded.Hooks.Definitions.X64;
 using Reloaded.Hooks.ReloadedII.Interfaces;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
+using Reloaded.Memory.Sources;
 using Reloaded.Mod.Interfaces;
 using System.Diagnostics;
 using static p3ppc.manualSkillInheritance.FusionMenu;
+using static p3ppc.manualSkillInheritance.PersonaMenu;
 using static p3ppc.manualSkillInheritance.Personas;
 using static p3ppc.manualSkillInheritance.Skills;
 using IReloadedHooks = Reloaded.Hooks.ReloadedII.Interfaces.IReloadedHooks;
@@ -50,25 +52,39 @@ namespace p3ppc.manualSkillInheritance
         /// </summary>
         private readonly IModConfig _modConfig;
 
+        private IMemory _memory;
+        
+        private UI _ui;
+
         private IAsmHook _setInheritanceHook;
         private IAsmHook _fusionResultsConfirmHook;
         private IAsmHook _fusionResultsHook;
+        private IAsmHook _personaMenuDisplayHook;
+        private IAsmHook _addInheritedSkillsHook;
+        private IAsmHook _skillHelpDescriptionHook;
         private IReverseWrapper<LogInheritanceDelegate> _logInheritanceReverseWrapper;
         private IReverseWrapper<StartChooseInheritanceDelegate> _startChooseInheritanceReverseWrapper;
         private IReverseWrapper<ChooseInheritanceDelegate> _chooseInheritanceReverseWrapper;
+        private IReverseWrapper<PersonaMenuDisplayDelegate> _personaMenuDisplayReverseWrapper;
         private Input* _input;
 
         private bool _inSkillSelection = false;
+        private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
+        private int _selectedSkillIndex = 0;
+        private PersonaDisplayInfo* _currentPersona;
+        private Skill _selectedSkill;
 
         public Mod(ModContext context)
         {
-            //Debugger.Launch();
+            Debugger.Launch();
             _modLoader = context.ModLoader;
             _hooks = context.Hooks;
             _logger = context.Logger;
             _owner = context.Owner;
             _configuration = context.Configuration;
             _modConfig = context.ModConfig;
+
+            _memory = Memory.Instance;
 
             Utils.Initialise(_logger, _configuration);
 
@@ -78,6 +94,8 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogError($"Unable to get controller for Reloaded SigScan Library, aborting initialisation");
                 return;
             }
+
+            _ui = new UI(startupScanner, _hooks);
 
             //PList<int>.Initialise(startupScanner, _hooks);
 
@@ -156,6 +174,65 @@ namespace p3ppc.manualSkillInheritance
                 };
                 _fusionResultsHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
+
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 81 C4 A8 01 00 00 5B", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find PersonaMenuDisplay, aborting initialisation");
+                    return;
+                }
+                Utils.LogDebug($"Found PersonaMenuDisplay at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
+                    "mov rcx, rbx",
+                    "sub rsp, 32",
+                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(PersonaMenuDisplay, out _personaMenuDisplayReverseWrapper)}",
+                    "add rsp, 32",
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
+                };
+                _personaMenuDisplayHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteAfter).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 8B CB 41 FF CE", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find AddInheritedSkills, aborting initialisation");
+                    return;
+                }
+                Utils.LogDebug($"Found AddInheritedSkills at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "mov dx, -1" // Make all of the base inherited skills -1 (nothing) so we can add our own
+                };
+                _addInheritedSkillsHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 66 85 F6 0F 84 ?? ?? ?? ?? 48 63 05 ?? ?? ?? ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderSkillHelpDescription, aborting initialisation");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderSkillHelpDescription at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "cmp si, 0" // Instead of test si, si cmp so we can jle
+                };
+                _skillHelpDescriptionHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteAfter).Activate();
+
+                _memory.Write(result.Offset + Utils.BaseAddress + 9, (byte)0x8E); // Change the jz to jle so it doesn't write descriptions for -1 skills
+            });
+
         }
 
         private void LogInheritance(nuint skillsListAddr, Persona* personaPtr)
@@ -170,21 +247,28 @@ namespace p3ppc.manualSkillInheritance
             }
             Utils.LogDebug($"{persona.Id} has skills {baseSkills}");
             PList<Skill> skills = new PList<Skill>(skillsListAddr);
-            string skillsString = "";
+            List<Skill> skillsList = new();
             for (int i = 0; i < skills.Count; i++)
-                skillsString += skills[i] + (i == skills.Count-1 ? "" : ", ");
-            Utils.LogDebug($"{persona.Id} can inherit {skillsString}");
+                skillsList.Add(skills[i]);
+            Utils.LogDebug($"{persona.Id} can inherit {string.Join(", ", skillsList)}");
+
+            if (_inheritanceSkills.ContainsKey((nuint)personaPtr))
+                _inheritanceSkills.Remove((nuint)personaPtr);
+            _inheritanceSkills.Add((nuint)personaPtr, skillsList);
         }
 
         private void StartChooseInheritance(FusionMenuInfo* info)
         {
             Utils.LogDebug($"Opening choose inheritance menu for {info->ResultPersona->Persona.Id}");
+            _currentPersona = null;
+            _selectedSkillIndex = 0;
+            _selectedSkill = Skill.None;
             _inSkillSelection = true;
         }
 
         private bool ChooseInheritanceMenu(FusionMenuInfo* info)
         {
-            if (!_inSkillSelection)
+            if (!_inSkillSelection || _currentPersona == null)
                 return false;
             if(_input->HasFlag(Input.Escape))
             {
@@ -192,9 +276,74 @@ namespace p3ppc.manualSkillInheritance
                 _inSkillSelection = false;
                 return true; // Still return true so we "absorb" the back input (could also just change the actual _input, not sure it really matters which way we do it)
             }
-            Utils.LogDebug("Choosing inheritance");
+
+            var persona = &info->ResultPersona->Persona;
+
+            if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
+            {
+                Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
+                _inSkillSelection = false;
+                return true;
+            }
+
+            if (_selectedSkill == Skill.None)
+                _selectedSkill = skills[_selectedSkillIndex];
+            
+            if (_input->HasFlag(Input.Up))
+            {
+                if (_selectedSkillIndex > 0)
+                    _selectedSkillIndex--;
+                _selectedSkill = skills[_selectedSkillIndex];
+            } 
+            if(_input->HasFlag(Input.Down))
+            {
+                if (_selectedSkillIndex < skills.Count - 1)
+                    _selectedSkillIndex++;
+                _selectedSkill = skills[_selectedSkillIndex];
+            }
+            if(_input->HasFlag(Input.Confirm))
+            {
+                var currentSkills = persona->Skills;
+                bool alreadyHasSkill = false;
+                int emptySkillIndex = -1;
+                for (int i = 0; i < 8; i++)
+                {
+                    if (currentSkills[i] == (short)_selectedSkill)
+                        alreadyHasSkill = true;
+                    else if (currentSkills[i] == (short)Skill.None)
+                    {
+                        emptySkillIndex = i;
+                        break;
+                    }
+                }
+                if(!alreadyHasSkill && emptySkillIndex != -1)
+                {
+                    (&_currentPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)_selectedSkill;
+                    persona->Skills[emptySkillIndex] = (short)_selectedSkill;
+                    Utils.LogDebug($"Added {_selectedSkill} to {persona->Id}");
+                } else
+                {
+                    Utils.LogError($"Cannot add {_selectedSkill} to {persona->Id}");
+                }
+            }
+            
             return true;
         }
+
+        private void PersonaMenuDisplay(PersonaMenuInfo* info)
+        {
+            if (!_inSkillSelection)
+                return;
+
+            if (_currentPersona == null)
+                _currentPersona = &info->Persona;
+
+            if(_ui.RenderSkillHelp != null)
+                _ui.RenderSkillHelp(0x43040000437c0000, 0, 0xFF, _selectedSkill);
+        }
+
+        [Function(CallingConventions.Microsoft)]
+        private delegate void PersonaMenuDisplayDelegate(PersonaMenuInfo* info);
 
         [Function(CallingConventions.Microsoft)]
         private delegate bool ChooseInheritanceDelegate(FusionMenuInfo* info);

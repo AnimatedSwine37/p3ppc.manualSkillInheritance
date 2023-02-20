@@ -413,10 +413,18 @@ namespace p3ppc.manualSkillInheritance
                 {
                     if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
                     {
-                        Utils.LogDebug($"Removing {(Skill)persona->Skills[i]} from {persona->Id}");
+                        var removedSkill = (Skill)persona->Skills[i];
+                        Utils.LogDebug($"Removing {removedSkill} from {persona->Id}");
                         persona->Skills[i] = -1;
                         (&_currentPersona->SkillsInfo.Skills)[i].Id = -1;
                         skillRemoved = true;
+                        // Move the cursor back to the skill that was just removed
+                        var displayIndex = _currentSkills.IndexOf(removedSkill);
+                        if(displayIndex != -1)
+                        {
+                            _selectedSkillIndex = displayIndex;
+                            _selectedSkill = removedSkill;
+                        }
                         break;
                     }
                 }
@@ -448,7 +456,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 PersonaDisplayInfo persona = new PersonaDisplayInfo();
                 persona.SkillsInfo.NumSkills = 1;
-                Position pos = new Position { X = 19, Y = 64 };
+                Position pos = new Position { X = 100, Y = 84.5f };
                 // Work out where to start displaying stuff so skills can scroll
                 bool startFound = false;
                 int startIndex = _selectedSkillIndex;

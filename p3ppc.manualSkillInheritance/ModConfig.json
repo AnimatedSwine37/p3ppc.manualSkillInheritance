@@ -16,7 +16,8 @@
   "IsUniversalMod": false,
   "ModDependencies": [
     "reloaded.sharedlib.hooks",
-    "Reloaded.Memory.SigScan.ReloadedII"
+    "Reloaded.Memory.SigScan.ReloadedII",
+    "p5rpc.modloader"
   ],
   "OptionalDependencies": [],
   "SupportedAppId": ["p3p.exe"],

@@ -18,6 +18,8 @@ namespace p3ppc.manualSkillInheritance
         internal RenderSkillHelpDelegate RenderSkillHelp;
         internal RenderSkillDelegate RenderSkill;
         private PlaySoundEffectDelegate _playSoundEffect;
+        internal RenderSprTextureDelegate RenderSprTexture;
+        internal LoadCampFileDelegate LoadCampFile;
 
         internal UI(IStartupScanner startupScanner, IReloadedHooks hooks)
         {
@@ -57,6 +59,29 @@ namespace p3ppc.manualSkillInheritance
                 _playSoundEffect = hooks.CreateWrapper<PlaySoundEffectDelegate>(Utils.BaseAddress + result.Offset, out _);
             });
 
+            startupScanner.AddMainModuleScan("48 89 5C 24 ?? 57 48 81 EC 80 00 00 00 0F 29 74 24 ?? 0F 29 7C 24 ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 44 24 ?? 48 8B D9 0F 28 F3 48 8D 0D ?? ?? ?? ?? 0F 28 FA 8B FA E8 ?? ?? ?? ?? 48 85 DB 75 ?? 8B 15 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 83 C2 02 E8 ?? ?? ?? ?? 0F B6 94 24 ?? ?? ?? ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderSprTexture, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderSprTexture at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                RenderSprTexture = hooks.CreateWrapper<RenderSprTextureDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
+
+            startupScanner.AddMainModuleScan("40 53 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8B 0D ?? ?? ?? ?? 4D 85 C9 74 ?? 49 8D 41 ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find LoadCampFileDelegate, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found LoadCampFileDelegate at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                LoadCampFile = hooks.CreateWrapper<LoadCampFileDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
         }
 
         internal void PlaySoundEffect(SoundEffect sound)
@@ -94,6 +119,12 @@ namespace p3ppc.manualSkillInheritance
             /// </summary>
             internal float Y;
         }
+
+        [Function(CallingConventions.Microsoft)]
+        internal delegate nuint LoadCampFileDelegate(string fileName);
+
+        [Function(CallingConventions.Microsoft)]
+        internal delegate void RenderSprTextureDelegate(nuint spr, int spriteIndex, float x, float y, int param_5, byte r, byte g, byte b, byte a, short param_10, short param_11, short param_12, short param_13, short param_14);
 
         [Function(CallingConventions.Microsoft)]
         internal delegate void PlaySoundEffectDelegate(short param_1, short param_2, short param_3, short param_4);

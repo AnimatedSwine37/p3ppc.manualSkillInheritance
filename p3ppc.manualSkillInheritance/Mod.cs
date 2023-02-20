@@ -449,9 +449,24 @@ namespace p3ppc.manualSkillInheritance
             if (_currentPersona == null)
                 _currentPersona = &info->Persona;
 
+            // Render background
+            var spr = _ui.LoadCampFile("c_main_01.spr");
+            if (spr == 0)
+            {
+                Utils.LogError($"Error loading c_main_01.spr");
+                return;
+            }
+            // Background rectangles
+            _ui.RenderSprTexture(spr, 0x1b4, 97, 78, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0); 
+            _ui.RenderSprTexture(spr, 0x1b4, 97, 118, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0); 
+            // Choose a skill text
+            _ui.RenderSprTexture(spr, 696, 259, 100, 0, 255, 0, 0, 255, 0x1000, 0x1000, 0, 0, 0);
+
+            // Render skill help
             if (_ui.RenderSkillHelp != null)
                 _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
 
+            // Render skill buttons
             if (_ui.RenderSkill != null && _currentSkills != null)
             {
                 PersonaDisplayInfo persona = new PersonaDisplayInfo();

@@ -457,10 +457,12 @@ namespace p3ppc.manualSkillInheritance
                 return;
             }
             // Background rectangles
-            _ui.RenderSprTexture(spr, 0x1b4, 97, 78, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0); 
-            _ui.RenderSprTexture(spr, 0x1b4, 97, 118, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0); 
+            var bgColour = _ui.Colours.SelectedSkillBg;
+            _ui.RenderSprTexture(spr, 0x1b4, 97, 78, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            _ui.RenderSprTexture(spr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             // Choose a skill text
-            _ui.RenderSprTexture(spr, 696, 259, 100, 0, 255, 0, 0, 255, 0x1000, 0x1000, 0, 0, 0);
+            var textColour = _ui.Colours.NormalSkillBg;
+            _ui.RenderSprTexture(spr, 696, 259, 100, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
             // Render skill help
             if (_ui.RenderSkillHelp != null)
@@ -495,7 +497,8 @@ namespace p3ppc.manualSkillInheritance
                 {
                     if (i >= _currentSkills.Count) break;
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
-                    persona.SelectedSlot = i == _selectedSkillIndex ? 0 : -1;
+                    persona.SelectedSlot = -1;
+                    persona.SkillsInfo.NewSkillsMask = i == _selectedSkillIndex ? (short)1 : (short)0;
                     _ui.RenderSkill(pos, 0, 0xFF, &persona, 0, 0);
                     pos.Y += 17;
                 }

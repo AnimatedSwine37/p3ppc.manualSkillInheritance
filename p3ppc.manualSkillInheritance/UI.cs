@@ -20,6 +20,10 @@ namespace p3ppc.manualSkillInheritance
         private PlaySoundEffectDelegate _playSoundEffect;
         internal RenderSprTextureDelegate RenderSprTexture;
         internal LoadCampFileDelegate LoadCampFile;
+        internal UIColours Colours => *_isFemc ? _genderColours->FemaleColours : _genderColours->MaleColours;
+
+        private GenderColours* _genderColours;
+        private bool* _isFemc;
 
         internal UI(IStartupScanner startupScanner, IReloadedHooks hooks)
         {
@@ -82,6 +86,22 @@ namespace p3ppc.manualSkillInheritance
 
                 LoadCampFile = hooks.CreateWrapper<LoadCampFileDelegate>(Utils.BaseAddress + result.Offset, out _);
             });
+
+            startupScanner.AddMainModuleScan("48 8D 35 ?? ?? ?? ?? 0F 28 05 ?? ?? ?? ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find UIColours, stuff won't be coloured right :(");
+                    return;
+                }
+                Utils.LogDebug($"Found UIColours pointer at 0x{result.Offset + Utils.BaseAddress:X}");
+                _genderColours = (GenderColours*)Utils.GetGlobalAddress(Utils.BaseAddress + result.Offset + 3);
+
+                Utils.LogDebug($"Found UIColours at 0x{(nuint)_genderColours:X}");
+
+                _isFemc = (bool*)Utils.GetGlobalAddress(Utils.BaseAddress + result.Offset - 4);
+                Utils.LogDebug($"Found IsFemc at 0x{(nuint)_isFemc:X}");
+            });
         }
 
         internal void PlaySoundEffect(SoundEffect sound)
@@ -118,6 +138,36 @@ namespace p3ppc.manualSkillInheritance
             /// Goes from the top edge, increasing moves down
             /// </summary>
             internal float Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct GenderColours
+        {
+            internal UIColours MaleColours;
+            
+            internal UIColours FemaleColours;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 100)]
+        internal struct UIColours
+        {
+            [FieldOffset(4)]
+            internal Colour NormalSkillBg;
+            
+            [FieldOffset(8)]
+            internal Colour SelectedSkillBg;
+
+            [FieldOffset(36)]
+            internal Colour NewSkillBg;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Colour
+        {
+            internal byte R;
+            internal byte G;
+            internal byte B;
+            internal byte A;
         }
 
         [Function(CallingConventions.Microsoft)]

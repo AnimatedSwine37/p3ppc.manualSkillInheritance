@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static p3ppc.manualSkillInheritance.UI;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -47,7 +48,7 @@ namespace p3ppc.manualSkillInheritance
             internal fixed short NextSkillsLevels[32];
 
             [FieldOffset(548)]
-            internal short NumNextLevels;
+            internal short NumNextSkills;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -57,7 +58,11 @@ namespace p3ppc.manualSkillInheritance
 
             internal short Id;
             
-            fixed byte unk2[8];
+            // Not what this actually is but we're using it to change colours
+            internal Colour BgColour;
+
+            // Not what this actually is but we're using it to change colours
+            internal Colour FgColour;
         }
     }
 }

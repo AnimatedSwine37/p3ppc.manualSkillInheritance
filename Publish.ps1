@@ -162,7 +162,7 @@ param (
     $UseScriptDirectory=$True,
 
     ## => User Config <= ## 
-    $ProjectPath = "p3ppc.manualSkillInheritance.csproj",
+    $ProjectPath = "p3ppc.manualSkillInheritance/p3ppc.manualSkillInheritance.csproj",
     $PackageName = "p3ppc.manualSkillInheritance",
     $PublishOutputDir = "Publish/ToUpload",
 

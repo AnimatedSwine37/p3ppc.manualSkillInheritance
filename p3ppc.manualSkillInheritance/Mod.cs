@@ -295,6 +295,7 @@ namespace p3ppc.manualSkillInheritance
             List<Skill> skillsList = new();
             for (int i = 0; i < skills.Count; i++)
                 skillsList.Add(skills[i]);
+            skillsList.Sort();
             Utils.LogDebug($"{persona.Id} can inherit {string.Join(", ", skillsList)}");
 
             if (_inheritanceSkills.ContainsKey((nuint)personaPtr))

@@ -208,7 +208,8 @@ namespace p3ppc.manualSkillInheritance
             Confirm,
             Back,
             Error,
-            SelectionChanged,
+            SelectionMoved,
+            SelectionJumped
         }
 
         private readonly Dictionary<SoundEffect, short[]> _soundEffectParams = new Dictionary<SoundEffect, short[]>
@@ -216,7 +217,9 @@ namespace p3ppc.manualSkillInheritance
             { SoundEffect.Confirm, new short[] { 0, 0, 0, 1} },
             { SoundEffect.Back, new short[] { 0, 0, 0, 2} },
             { SoundEffect.Error, new short[] { 0, 0, 0, 8} },
-            { SoundEffect.SelectionChanged, new short[] { 0, 1, 0, 0} }
+            { SoundEffect.SelectionMoved, new short[] { 0, 1, 0, 0 } },
+            { SoundEffect.SelectionJumped, new short[] { 0, 1, 0, 5} }
+
         };
 
         [StructLayout(LayoutKind.Sequential)]
@@ -315,7 +318,7 @@ namespace p3ppc.manualSkillInheritance
 
             [FieldOffset(88)]
             internal Colour Red;
-            
+
             [FieldOffset(92)]
             internal Colour Orange3;
 

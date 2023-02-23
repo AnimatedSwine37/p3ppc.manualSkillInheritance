@@ -73,6 +73,7 @@ namespace p3ppc.manualSkillInheritance
         private bool _inSkillSelection = false;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
         private int _selectedSkillIndex = 0;
+        private int _selectedSkillDisplayIndex = 0;
         private PersonaDisplayInfo* _currentPersona;
         private Skill _selectedSkill;
         private List<Skill>? _currentSkills;
@@ -81,7 +82,7 @@ namespace p3ppc.manualSkillInheritance
 
         public Mod(ModContext context)
         {
-            //Debugger.Launch();
+
             _modLoader = context.ModLoader;
             _hooks = context.Hooks;
             _logger = context.Logger;
@@ -307,6 +308,7 @@ namespace p3ppc.manualSkillInheritance
             _currentPersona = null;
             _currentSkills = null;
             _selectedSkillIndex = 0;
+            _selectedSkillDisplayIndex = 0;
             _selectedSkill = Skill.None;
             _inSkillSelection = true;
         }
@@ -336,7 +338,7 @@ namespace p3ppc.manualSkillInheritance
                 return InheritanceState.ChoosingSkills;
             }
 
-            if(_currentSkills == null)
+            if (_currentSkills == null)
             {
                 if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
                 {
@@ -352,23 +354,71 @@ namespace p3ppc.manualSkillInheritance
 
             if (_input->HasFlag(Input.Up) && _currentSkills.Count > 1)
             {
-                _ui.PlaySoundEffect(SoundEffect.SelectionChanged);
+                _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                 if (_selectedSkillIndex > 0)
+                {
+                    // If we can see the first skill or the display is the bottom 2 move it up
+                    if (_selectedSkillDisplayIndex != 0 && (_selectedSkillDisplayIndex > 2 || _selectedSkillIndex - _selectedSkillDisplayIndex == 0))
+                        _selectedSkillDisplayIndex--;
                     _selectedSkillIndex--;
+                }
                 else
+                {
+                    // Wrap around
                     _selectedSkillIndex = _currentSkills.Count - 1;
+                    _selectedSkillDisplayIndex = 4;
+                }
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
             if (_input->HasFlag(Input.Down) && _currentSkills.Count > 1)
             {
-                _ui.PlaySoundEffect(SoundEffect.SelectionChanged);
+                _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                 if (_selectedSkillIndex < _currentSkills.Count - 1)
+                {
+                    // If we can see the last skill or the display is the top 2, move it down
+                    if(_selectedSkillDisplayIndex != 4 && (_selectedSkillDisplayIndex < 2 || _selectedSkillIndex - _selectedSkillDisplayIndex >= _currentSkills.Count - 5))
+                        _selectedSkillDisplayIndex++;
                     _selectedSkillIndex++;
+                }
                 else
+                {
+                    // Wrap around
                     _selectedSkillIndex = 0;
+                    _selectedSkillDisplayIndex = 0;
+                }
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Confirm) )
+            if (_input->HasFlag(Input.Right))
+            {
+                bool didMove = false;
+                // Go down 5 or until the last skill can be seen
+                for (int i = 0; i < 5; i++)
+                {
+                    if (_selectedSkillIndex - _selectedSkillDisplayIndex >= _currentSkills.Count - 5)
+                        break;
+                    _selectedSkillIndex++;
+                    didMove = true;
+                }
+                if(didMove)
+                    _ui.PlaySoundEffect(SoundEffect.SelectionJumped);
+                _selectedSkill = _currentSkills[_selectedSkillIndex];
+            }
+            if (_input->HasFlag(Input.Left))
+            {
+                bool didMove = false;
+                // Go up 5 or until the first skill can be seen
+                for (int i = 0; i < 5; i++)
+                {
+                    if (_selectedSkillIndex - _selectedSkillDisplayIndex == 0)
+                        break;
+                    _selectedSkillIndex--;
+                    didMove = true;
+                }
+                if(didMove)
+                    _ui.PlaySoundEffect(SoundEffect.SelectionJumped);
+                _selectedSkill = _currentSkills[_selectedSkillIndex];
+            }
+            if (_input->HasFlag(Input.Confirm))
             {
                 var currentSkills = persona->Skills;
                 bool alreadyHasSkill = false;
@@ -420,10 +470,17 @@ namespace p3ppc.manualSkillInheritance
                         skillRemoved = true;
                         // Move the cursor back to the skill that was just removed
                         var displayIndex = _currentSkills.IndexOf(removedSkill);
-                        if(displayIndex != -1)
+                        if (displayIndex != -1)
                         {
                             _selectedSkillIndex = displayIndex;
                             _selectedSkill = removedSkill;
+                            // Attempt to align the display index to have two skills on either side
+                            if (_selectedSkillIndex < 2)
+                                _selectedSkillDisplayIndex = _selectedSkillIndex;
+                            else if (_selectedSkillIndex >= _currentSkills.Count - 2)
+                                _selectedSkillDisplayIndex = 5 - (_currentSkills.Count - _selectedSkillIndex);
+                            else
+                                _selectedSkillDisplayIndex = 2;
                         }
                         break;
                     }
@@ -476,24 +533,25 @@ namespace p3ppc.manualSkillInheritance
                 PersonaDisplayInfo persona = new PersonaDisplayInfo();
                 persona.SkillsInfo.NumSkills = 1;
                 Position pos = new Position { X = 100, Y = 84.5f };
-                // Work out where to start displaying stuff so skills can scroll
-                bool startFound = false;
-                int startIndex = _selectedSkillIndex;
-                for(int i = 0; i < 2; i++)
-                {
-                    if (startIndex - 1 >= 0)
-                        startIndex--;
-                    else
-                    {
-                        startFound = true;
-                        break;
-                    }
-                }
-                if(!startFound)
-                {
-                    while (_currentSkills.Count - startIndex < 5 && startIndex != 0)
-                        startIndex--;
-                }
+                //// Work out where to start displaying stuff so skills can scroll
+                //bool startFound = false;
+                //int startIndex = _selectedSkillIndex;
+                //for(int i = 0; i < 2; i++)
+                //{
+                //    if (startIndex - 1 >= 0)
+                //        startIndex--;
+                //    else
+                //    {
+                //        startFound = true;
+                //        break;
+                //    }
+                //}
+                //if(!startFound)
+                //{
+                //    while (_currentSkills.Count - startIndex < 5 && startIndex != 0)
+                //        startIndex--;
+                //}
+                int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
 
                 // Set the colour for the selected skill
                 persona.SkillsInfo.NextSkills.BgColour = colours.LightGreen;
@@ -502,7 +560,7 @@ namespace p3ppc.manualSkillInheritance
                 // Display the skills (up to 5)
                 for (int i = startIndex; i < startIndex + 5; i++)
                 {
-                    if (i >= _currentSkills.Count) break;
+                    if (i >= _currentSkills.Count || i < 0) break;
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
                     persona.SelectedSlot = -1;
                     //persona.SkillsInfo.NewSkillsMask = i == _selectedSkillIndex ? (short)1 : (short)0;

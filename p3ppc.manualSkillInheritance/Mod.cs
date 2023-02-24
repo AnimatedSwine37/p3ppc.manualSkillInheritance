@@ -8,6 +8,7 @@ using Reloaded.Memory.Sources;
 using Reloaded.Mod.Interfaces;
 using System.Diagnostics;
 using static p3ppc.manualSkillInheritance.FusionMenu;
+using static p3ppc.manualSkillInheritance.Inputs;
 using static p3ppc.manualSkillInheritance.PersonaMenu;
 using static p3ppc.manualSkillInheritance.Personas;
 using static p3ppc.manualSkillInheritance.Skills;
@@ -68,7 +69,7 @@ namespace p3ppc.manualSkillInheritance
         private IReverseWrapper<ChooseInheritanceDelegate> _chooseInheritanceReverseWrapper;
         private IReverseWrapper<PersonaMenuDisplayDelegate> _personaMenuDisplayReverseWrapper;
         private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
-        private Input* _input;
+        private InputStruct* _input;
 
         private bool _inSkillSelection = false;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
@@ -79,6 +80,9 @@ namespace p3ppc.manualSkillInheritance
         private List<Skill>? _currentSkills;
 
         private nuint _allowFusionConfirmation;
+
+        private TimeSpan movementDelay = TimeSpan.FromMilliseconds(100);
+        private TimeSpan movementInitialDelay = TimeSpan.FromMilliseconds(230);
 
         public Mod(ModContext context)
         {
@@ -167,8 +171,9 @@ namespace p3ppc.manualSkillInheritance
                 }
                 Utils.LogDebug($"Found FusionResultsMenu at 0x{result.Offset + Utils.BaseAddress:X}");
 
-                _input = (Input*)Utils.GetGlobalAddress(result.Offset + Utils.BaseAddress + 42);
-                Utils.LogDebug($"Input is at 0x{(nuint)_input:X}");
+                _input = (InputStruct*)Utils.GetGlobalAddress(result.Offset + Utils.BaseAddress + 42);
+                Inputs.Initialise(_input);
+                Utils.LogDebug($"InputFlag is at 0x{(nuint)_input:X}");
 
                 string[] function =
                 {
@@ -353,11 +358,11 @@ namespace p3ppc.manualSkillInheritance
             if (_selectedSkill == Skill.None)
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
 
-            if (_input->HasFlag(Input.Up) && _currentSkills.Count > 1)
+            if (IsHeld(Input.Up, movementDelay, movementInitialDelay) && _currentSkills.Count > 1)
             {
-                _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                 if (_selectedSkillIndex > 0)
                 {
+                    _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                     // If we can see the first skill or the display is the bottom 2 move it up
                     if (_selectedSkillDisplayIndex != 0 && (_selectedSkillDisplayIndex > 2 || _selectedSkillIndex - _selectedSkillDisplayIndex == 0))
                         _selectedSkillDisplayIndex--;
@@ -365,31 +370,39 @@ namespace p3ppc.manualSkillInheritance
                 }
                 else
                 {
-                    // Wrap around
-                    _selectedSkillIndex = _currentSkills.Count - 1;
-                    _selectedSkillDisplayIndex = 4;
+                    // Only wrap around if you press the button, not holding it
+                    if (_inputs->Pressed.HasFlag(InputFlag.Up) || _inputs->ThumbstickPressed.HasFlag(InputFlag.Up))
+                    {
+                        _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
+                        _selectedSkillIndex = _currentSkills.Count - 1;
+                        _selectedSkillDisplayIndex = 4;
+                    }
                 }
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Down) && _currentSkills.Count > 1)
+            if (IsHeld(Input.Down, movementDelay, movementInitialDelay) && _currentSkills.Count > 1)
             {
-                _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                 if (_selectedSkillIndex < _currentSkills.Count - 1)
                 {
+                    _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                     // If we can see the last skill or the display is the top 2, move it down
-                    if(_selectedSkillDisplayIndex != 4 && (_selectedSkillDisplayIndex < 2 || _selectedSkillIndex - _selectedSkillDisplayIndex >= _currentSkills.Count - 5))
+                    if (_selectedSkillDisplayIndex != 4 && (_selectedSkillDisplayIndex < 2 || _selectedSkillIndex - _selectedSkillDisplayIndex >= _currentSkills.Count - 5))
                         _selectedSkillDisplayIndex++;
                     _selectedSkillIndex++;
                 }
                 else
                 {
-                    // Wrap around
-                    _selectedSkillIndex = 0;
-                    _selectedSkillDisplayIndex = 0;
+                    // Only wrap around if you press the button, not holding it
+                    if (_inputs->Pressed.HasFlag(InputFlag.Down) || _inputs->ThumbstickPressed.HasFlag(InputFlag.Down))
+                    {
+                        _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
+                        _selectedSkillIndex = 0;
+                        _selectedSkillDisplayIndex = 0;
+                    }
                 }
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Right))
+            if (IsHeld(Input.Right, movementDelay, movementInitialDelay))
             {
                 bool didMove = false;
                 // Go down 5 or until the last skill can be seen
@@ -400,11 +413,11 @@ namespace p3ppc.manualSkillInheritance
                     _selectedSkillIndex++;
                     didMove = true;
                 }
-                if(didMove)
+                if (didMove)
                     _ui.PlaySoundEffect(SoundEffect.SelectionJumped);
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Left))
+            if (IsHeld(Input.Left, movementDelay, movementInitialDelay))
             {
                 bool didMove = false;
                 // Go up 5 or until the first skill can be seen
@@ -415,11 +428,11 @@ namespace p3ppc.manualSkillInheritance
                     _selectedSkillIndex--;
                     didMove = true;
                 }
-                if(didMove)
+                if (didMove)
                     _ui.PlaySoundEffect(SoundEffect.SelectionJumped);
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
             }
-            if (_input->HasFlag(Input.Confirm))
+            if (_input->Pressed.HasFlag(InputFlag.Confirm))
             {
                 var currentSkills = persona->Skills;
                 bool alreadyHasSkill = false;
@@ -455,7 +468,7 @@ namespace p3ppc.manualSkillInheritance
                 }
             }
 
-            if (_input->HasFlag(Input.Escape))
+            if (_input->Pressed.HasFlag(InputFlag.Escape))
             {
                 _ui.PlaySoundEffect(SoundEffect.Back);
                 var mask = _currentPersona->SkillsInfo.NewSkillsMask;
@@ -491,7 +504,7 @@ namespace p3ppc.manualSkillInheritance
                     Utils.LogDebug("Cancelling inheritance choice");
                     _inSkillSelection = false;
                     _currentPersona = null;
-                    *_input &= ~Input.Escape; // Absorb the escape so the whole results menu doesn't close
+                    _input->Pressed &= ~InputFlag.Escape; // Absorb the escape so the whole results menu doesn't close
                     return InheritanceState.NotInMenu;
                 }
             }
@@ -534,24 +547,6 @@ namespace p3ppc.manualSkillInheritance
                 PersonaDisplayInfo persona = new PersonaDisplayInfo();
                 persona.SkillsInfo.NumSkills = 1;
                 Position pos = new Position { X = 100, Y = 84.5f };
-                //// Work out where to start displaying stuff so skills can scroll
-                //bool startFound = false;
-                //int startIndex = _selectedSkillIndex;
-                //for(int i = 0; i < 2; i++)
-                //{
-                //    if (startIndex - 1 >= 0)
-                //        startIndex--;
-                //    else
-                //    {
-                //        startFound = true;
-                //        break;
-                //    }
-                //}
-                //if(!startFound)
-                //{
-                //    while (_currentSkills.Count - startIndex < 5 && startIndex != 0)
-                //        startIndex--;
-                //}
                 int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
 
                 // Set the colour for the selected skill
@@ -564,7 +559,6 @@ namespace p3ppc.manualSkillInheritance
                     if (i >= _currentSkills.Count || i < 0) break;
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
                     persona.SelectedSlot = -1;
-                    //persona.SkillsInfo.NewSkillsMask = i == _selectedSkillIndex ? (short)1 : (short)0;
                     // Different colour for the selected skill
                     persona.SkillsInfo.NumNextSkills = i == _selectedSkillIndex ? (short)-1 : (short)0;
 

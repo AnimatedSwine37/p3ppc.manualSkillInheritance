@@ -57,17 +57,5 @@ namespace p3ppc.manualSkillInheritance
             FusionSkillSelection = 0x69,
         }
 
-        [Flags]
-        internal enum Input
-        {
-            Start = 1 << 3,
-            Up = 1 << 4,
-            Right = 1 << 5,
-            Down = 1 << 6,
-            Left = 1 << 7,
-            Confirm = 1 << 13,
-            Escape = 1 << 14,
-            SubMenu = 1 << 15,
-        }
     }
 }

@@ -4,12 +4,102 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static p3ppc.manualSkillInheritance.PersonaMenu;
 using static p3ppc.manualSkillInheritance.Skills;
+using static p3ppc.manualSkillInheritance.UI;
 
 namespace p3ppc.manualSkillInheritance
 {
     internal unsafe class Personas
     {
+        /// <summary>
+        /// Adds an inherited skill to a Persona
+        /// </summary>
+        /// <param name="displayPersona">The display persona</param>
+        /// <param name="persona">The actual Persona</param>
+        /// <param name="skill">The skill to add</param>
+        /// <returns>The index of the newly added skill or -1 if none was added</returns>
+        internal static int AddInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona, Skill skill)
+        {
+            var currentSkills = persona->Skills;
+            int emptySkillIndex = -1;
+            for (int i = 0; i < 8; i++)
+            {
+                if (currentSkills[i] == (short)skill)
+                {
+                    emptySkillIndex = -1;
+                    break;
+                }
+                else if (currentSkills[i] == (short)Skill.None)
+                {
+                    emptySkillIndex = i;
+                    break;
+                }
+            }
+            if (emptySkillIndex != -1)
+            {
+                (&displayPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)skill;
+                persona->Skills[emptySkillIndex] = (short)skill;
+                AddInheritedSkill(persona, skill);
+                Utils.LogDebug($"Added {skill} to {persona->Id}");
+            }
+            else
+            {
+                Utils.LogDebug($"Cannot add {skill} to {persona->Id}");
+            }
+            return emptySkillIndex;
+        }
+
+        private static void AddInheritedSkill(Persona* persona, Skill skill)
+        {
+            for(int i = 0; i < 8; i++)
+            {
+                if (persona->InheritedSkills[i] <= 0)
+                {
+                    persona->InheritedSkills[i] = (short)skill;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes the last skill a Persona inherited
+        /// </summary>
+        /// <param name="displayPersona">The display persona</param>
+        /// <param name="persona">The actual Persona</param>
+        /// <returns>The Skill that was removed or Skill.None if none was removed (they haven't inherited anything yet)</returns>
+        internal static Skill RemoveLastInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona)
+        {
+            var mask = displayPersona->SkillsInfo.NewSkillsMask;
+            for (int i = 7; i >= 0; i--)
+            {
+                if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
+                {
+                    Skill removedSkill = (Skill)persona->Skills[i];
+                    Utils.LogDebug($"Removing {removedSkill} from {persona->Id}");
+                    persona->Skills[i] = -1;
+                    (&displayPersona->SkillsInfo.Skills)[i].Id = -1;
+                    persona->Skills[i] = -1;
+                    RemoveLastInheritedSkill(persona);
+                    return removedSkill;
+                }
+            }
+            return Skill.None;
+        }
+
+        private static void RemoveLastInheritedSkill(Persona* persona)
+        {
+            for (int i = 7; i >= 0; i--)
+            {
+                var inheritedSkills = persona->InheritedSkills;
+                if (inheritedSkills[i] != 0 && inheritedSkills[i] != -1)
+                {
+                    persona->InheritedSkills[i] = -1;
+                    break;
+                }
+            }
+        }
+
         [StructLayout(LayoutKind.Explicit)]
         internal struct Persona
         {
@@ -44,6 +134,9 @@ namespace p3ppc.manualSkillInheritance
 
             [FieldOffset(32)]
             internal byte Luck;
+
+            [FieldOffset(64)]
+            internal fixed short InheritedSkills[8];
         }
 
         [StructLayout(LayoutKind.Explicit)]

@@ -329,17 +329,7 @@ namespace p3ppc.manualSkillInheritance
             // Back in the menu after selecting no to the confirmation
             if (!_inSkillSelection && _currentPersona != null)
             {
-                var mask = _currentPersona->SkillsInfo.NewSkillsMask;
-                for (int i = 7; i >= 0; i--)
-                {
-                    if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
-                    {
-                        Utils.LogDebug($"Removing {(Skill)persona->Skills[i]} from {persona->Id}");
-                        persona->Skills[i] = -1;
-                        (&_currentPersona->SkillsInfo.Skills)[i].Id = -1;
-                        break;
-                    }
-                }
+                RemoveLastInheritedSkill(_currentPersona, persona);
                 _inSkillSelection = true;
                 return InheritanceState.ChoosingSkills;
             }
@@ -434,72 +424,46 @@ namespace p3ppc.manualSkillInheritance
             }
             if (_input->Pressed.HasFlag(InputFlag.Confirm))
             {
-                var currentSkills = persona->Skills;
-                bool alreadyHasSkill = false;
-                int emptySkillIndex = -1;
-                for (int i = 0; i < 8; i++)
-                {
-                    if (currentSkills[i] == (short)_selectedSkill)
-                        alreadyHasSkill = true;
-                    else if (currentSkills[i] == (short)Skill.None)
-                    {
-                        emptySkillIndex = i;
-                        break;
-                    }
-                }
-                if (!alreadyHasSkill && emptySkillIndex != -1)
+                var newSkillIndex = AddInheritedSkill(_currentPersona, persona, _selectedSkill);
+                if(newSkillIndex != -1)
                 {
                     _ui.PlaySoundEffect(SoundEffect.Confirm);
 
-                    (&_currentPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)_selectedSkill;
-                    persona->Skills[emptySkillIndex] = (short)_selectedSkill;
-                    Utils.LogDebug($"Added {_selectedSkill} to {persona->Id}");
-                    if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << emptySkillIndex + 1)) == 0)
+                    if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << newSkillIndex + 1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
                         _inSkillSelection = false;
                         return InheritanceState.DoneChoosingSkills;
-                    }
+                    }                    
                 }
                 else
                 {
                     _ui.PlaySoundEffect(SoundEffect.Error);
-                    Utils.LogDebug($"Cannot add {_selectedSkill} to {persona->Id}");
                 }
             }
 
             if (_input->Pressed.HasFlag(InputFlag.Escape))
             {
                 _ui.PlaySoundEffect(SoundEffect.Back);
-                var mask = _currentPersona->SkillsInfo.NewSkillsMask;
-                bool skillRemoved = false;
-                for (int i = 7; i >= 0; i--)
+                var removedSkill = RemoveLastInheritedSkill(_currentPersona, persona);
+                if (removedSkill != Skill.None)
                 {
-                    if ((mask & (1 << i)) != 0 && persona->Skills[i] > 0)
+                    // Move the cursor back to the skill that was just removed
+                    var displayIndex = _currentSkills.IndexOf(removedSkill);
+                    if (displayIndex != -1)
                     {
-                        var removedSkill = (Skill)persona->Skills[i];
-                        Utils.LogDebug($"Removing {removedSkill} from {persona->Id}");
-                        persona->Skills[i] = -1;
-                        (&_currentPersona->SkillsInfo.Skills)[i].Id = -1;
-                        skillRemoved = true;
-                        // Move the cursor back to the skill that was just removed
-                        var displayIndex = _currentSkills.IndexOf(removedSkill);
-                        if (displayIndex != -1)
-                        {
-                            _selectedSkillIndex = displayIndex;
-                            _selectedSkill = removedSkill;
-                            // Attempt to align the display index to have two skills on either side
-                            if (_selectedSkillIndex < 2)
-                                _selectedSkillDisplayIndex = _selectedSkillIndex;
-                            else if (_selectedSkillIndex >= _currentSkills.Count - 2)
-                                _selectedSkillDisplayIndex = 5 - (_currentSkills.Count - _selectedSkillIndex);
-                            else
-                                _selectedSkillDisplayIndex = 2;
-                        }
-                        break;
+                        _selectedSkillIndex = displayIndex;
+                        _selectedSkill = removedSkill;
+                        // Attempt to align the display index to have two skills on either side
+                        if (_selectedSkillIndex < 2)
+                            _selectedSkillDisplayIndex = _selectedSkillIndex;
+                        else if (_selectedSkillIndex >= _currentSkills.Count - 2)
+                            _selectedSkillDisplayIndex = 5 - (_currentSkills.Count - _selectedSkillIndex);
+                        else
+                            _selectedSkillDisplayIndex = 2;
                     }
                 }
-                if (!skillRemoved)
+                else
                 {
                     Utils.LogDebug("Cancelling inheritance choice");
                     _inSkillSelection = false;

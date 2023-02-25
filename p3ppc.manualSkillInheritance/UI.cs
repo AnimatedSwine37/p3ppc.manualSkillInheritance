@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static p3ppc.manualSkillInheritance.Colours;
 using static p3ppc.manualSkillInheritance.PersonaMenu;
 using static p3ppc.manualSkillInheritance.Skills;
 
@@ -26,9 +27,6 @@ namespace p3ppc.manualSkillInheritance
         private IAsmHook _setupSkillTextColourHook;
         private IAsmHook _skillTextColourHook;
 
-        internal UIColours Colours => *IsFemc ? _genderColours->FemaleColours : _genderColours->MaleColours;
-
-        private GenderColours* _genderColours;
         internal bool* IsFemc;
 
         internal UI(IStartupScanner startupScanner, IReloadedHooks hooks)
@@ -97,15 +95,12 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find UIColours, stuff won't be coloured right :(");
+                    Utils.LogError($"Unable to find IsFemc, stuff won't be coloured right :(");
                     return;
                 }
-                Utils.LogDebug($"Found UIColours pointer at 0x{result.Offset + Utils.BaseAddress:X}");
-                _genderColours = (GenderColours*)Utils.GetGlobalAddress(Utils.BaseAddress + result.Offset + 3);
-
-                Utils.LogDebug($"Found UIColours at 0x{(nuint)_genderColours:X}");
 
                 IsFemc = (bool*)Utils.GetGlobalAddress(Utils.BaseAddress + result.Offset - 4);
+                Colours.Initialise(IsFemc);
                 Utils.LogDebug($"Found IsFemc at 0x{(nuint)IsFemc:X}");
             });
 
@@ -235,109 +230,6 @@ namespace p3ppc.manualSkillInheritance
             internal float Y;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct GenderColours
-        {
-            internal UIColours MaleColours;
-
-            internal UIColours FemaleColours;
-        }
-
-        [StructLayout(LayoutKind.Explicit, Size = 100)]
-        internal struct UIColours
-        {
-            [FieldOffset(0)]
-            internal Colour LightGreen3;
-
-            [FieldOffset(4)]
-            internal Colour NormalSkillBg;
-
-            [FieldOffset(8)]
-            internal Colour SelectedSkillBg;
-
-            [FieldOffset(12)]
-            internal Colour YellowGreenLighter;
-
-            [FieldOffset(16)]
-            internal Colour White;
-
-            [FieldOffset(20)]
-            internal Colour HotPink;
-
-            // White but with a slight green tinge (not sure if that's because of the button or it's actually like that...)
-            [FieldOffset(24)]
-            internal Colour WhiteGreen;
-
-            // Like a light pink, maybe prawn 
-            [FieldOffset(28)]
-            internal Colour LightPink;
-
-            [FieldOffset(32)]
-            internal Colour LightGreen;
-
-            [FieldOffset(36)]
-            internal Colour NewSkillBg;
-
-            [FieldOffset(40)]
-            internal Colour Cyan;
-
-            // Like a slightly different light green
-            [FieldOffset(44)]
-            internal Colour YellowGreen;
-
-            // I'm pretty sure this is just the same as light green...
-            [FieldOffset(48)]
-            internal Colour LightGreen2;
-
-            [FieldOffset(52)]
-            internal Colour LightPink2;
-
-            [FieldOffset(56)]
-            internal Colour Orange;
-
-            [FieldOffset(60)]
-            internal Colour LighterPink;
-
-            [FieldOffset(64)]
-            internal Colour WhiteGreen2;
-
-            [FieldOffset(68)]
-            internal Colour WhiteGreen3;
-
-            [FieldOffset(72)]
-            internal Colour LightOrange;
-
-            [FieldOffset(76)]
-            internal Colour LightPink3;
-
-            [FieldOffset(80)]
-            internal Colour Orange2;
-
-            [FieldOffset(84)]
-            internal Colour VeryLightOrange;
-
-            [FieldOffset(88)]
-            internal Colour Red;
-
-            [FieldOffset(92)]
-            internal Colour Orange3;
-
-            [FieldOffset(96)]
-            internal Colour HotPink2;
-
-            [FieldOffset(100)]
-            internal Colour Orange4;
-
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Colour
-        {
-            internal byte R;
-            internal byte G;
-            internal byte B;
-            internal byte A;
-        }
 
         [Function(CallingConventions.Microsoft)]
         private delegate Colour GetSkillColourDelegate(PersonaDisplayInfo* displayInfo, Colour currentColour);

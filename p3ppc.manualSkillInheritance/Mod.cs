@@ -491,14 +491,13 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogError($"Error loading c_main_01.spr");
                 return;
             }
-            var colours = _ui.Colours;
 
             // Background rectangles
-            var bgColour = colours.SelectedSkillBg;
+            var bgColour = Colours.SkillFg;
             _ui.RenderSprTexture(spr, 0x1b4, 97, 78, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             _ui.RenderSprTexture(spr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             // Choose a skill text
-            var textColour = colours.NormalSkillBg;
+            var textColour = Colours.SkillBg;
             _ui.RenderSprTexture(spr, 696, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
             // Render skill help
@@ -512,11 +511,7 @@ namespace p3ppc.manualSkillInheritance
                 persona.SkillsInfo.NumSkills = 1;
                 Position pos = new Position { X = 100, Y = 84.5f };
                 int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
-
-                // Set the colour for the selected skill
-                persona.SkillsInfo.NextSkills.BgColour = colours.LightGreen;
-                persona.SkillsInfo.NextSkills.FgColour = new Colour { A = 0x10, B = 0x5D, G = 0x00, R = 0xFF }; // It's reversed here for some reason /shrug
-
+                                
                 // Display the skills (up to 5)
                 for (int i = startIndex; i < startIndex + 5; i++)
                 {
@@ -524,7 +519,25 @@ namespace p3ppc.manualSkillInheritance
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
                     persona.SelectedSlot = -1;
                     // Different colour for the selected skill
-                    persona.SkillsInfo.NumNextSkills = i == _selectedSkillIndex ? (short)-1 : (short)0;
+                    if(i == _selectedSkillIndex)
+                    {
+                        persona.SkillsInfo.NextSkills.BgColour = Colours.SelectedBg;
+                        persona.SkillsInfo.NextSkills.FgColour = Colours.SelectedFg;
+                        if (HasSkill(_currentPersona, _currentSkills[i]))
+                            persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenSelectedFg; 
+                        persona.SkillsInfo.NumNextSkills = -1;
+                    }
+                    // Different colour for skills that have already been selected
+                    else if(HasSkill(_currentPersona, _currentSkills[i]))
+                    {
+                        persona.SkillsInfo.NextSkills.BgColour = Colours.AlreadyChosenBg;
+                        persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenFg;
+                        persona.SkillsInfo.NumNextSkills = -1;
+                    }
+                    else
+                    {
+                        persona.SkillsInfo.NumNextSkills = 0;
+                    }
 
                     _ui.RenderSkill(pos, 0, 0xFF, &persona, 0, 0);
                     pos.Y += 17;

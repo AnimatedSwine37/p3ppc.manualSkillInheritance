@@ -12,6 +12,27 @@ namespace p3ppc.manualSkillInheritance
 {
     internal unsafe class Personas
     {
+        internal static bool HasSkill(Persona persona, Skill skill)
+        {
+            var currentSkills = persona.Skills;
+            for(int i = 0; i < 8; i++)
+            {
+                if (currentSkills[i] == (short)skill)
+                    return true;
+            }
+            return false;
+        }
+
+        internal static bool HasSkill(PersonaDisplayInfo* persona, Skill skill)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                if ((&persona->SkillsInfo.Skills)[i].Id == (short)skill)
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Adds an inherited skill to a Persona
         /// </summary>

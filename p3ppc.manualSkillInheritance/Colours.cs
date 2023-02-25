@@ -42,7 +42,7 @@ namespace p3ppc.manualSkillInheritance
         internal static readonly Colour SelectedFg = new Colour { A = 16, B = 95, G = 0, R = 255 }; // Needs to be reversed for some reason
         internal static readonly Colour AlreadyChosenBg = new Colour { R = 35, G = 97, B = 143, A = 255 };
         internal static readonly Colour AlreadyChosenFg = new Colour { A = 128, B = 188, G = 255, R = 255 }; // Needs to be reversed for some reason
-        internal static readonly Colour AlreadyChosenSelectedFg = new Colour { A = 0x10, B = 0x5D, G = 0x00, R = 175 }; // Needs to be reversed for some reason0
+        internal static readonly Colour AlreadyChosenSelectedFg = new Colour { A = 0x10, B = 0x5D, G = 0x00, R = 141 }; // Needs to be reversed for some reason0
         internal static readonly Colour SkillFg = new Colour { R = 0, G = 59, B = 93, A = 255 };
         internal static readonly Colour SkillBg = new Colour { R = 107, G = 177, B = 255, A = 255 };
     }
@@ -53,7 +53,7 @@ namespace p3ppc.manualSkillInheritance
         internal static readonly Colour SelectedFg = new Colour { A = 16, B = 95, G = 0, R = 255 }; // Needs to be reversed for some reason
         internal static readonly Colour AlreadyChosenBg = new Colour { R = 150, G = 58, B = 72, A = 255 };
         internal static readonly Colour AlreadyChosenFg = new Colour { A = 255, B = 191, G = 219, R = 255 }; // Needs to be reversed for some reason
-        internal static readonly Colour AlreadyChosenSelectedFg = new Colour { A = 0x10, B = 0x5D, G = 0x00, R = 175 }; // Needs to be reversed for some reason
+        internal static readonly Colour AlreadyChosenSelectedFg = new Colour { A = 0x10, B = 0x5D, G = 0x00, R = 141 }; // Needs to be reversed for some reason
         internal static readonly Colour SkillFg = new Colour { R = 105, G = 0, B = 9, A = 255 };
         internal static readonly Colour SkillBg = new Colour { R = 255, G = 191, B = 219, A = 255 };
     }

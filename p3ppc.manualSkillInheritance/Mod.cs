@@ -366,6 +366,8 @@ namespace p3ppc.manualSkillInheritance
                         _ui.PlaySoundEffect(SoundEffect.SelectionMoved);
                         _selectedSkillIndex = _currentSkills.Count - 1;
                         _selectedSkillDisplayIndex = 4;
+                        if (_currentSkills.Count < 5)
+                            _selectedSkillDisplayIndex = _currentSkills.Count - 1;
                     }
                 }
                 _selectedSkill = _currentSkills[_selectedSkillIndex];

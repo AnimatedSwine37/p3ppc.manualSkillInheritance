@@ -71,7 +71,7 @@ namespace p3ppc.manualSkillInheritance
         private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
         private InputStruct* _input;
 
-        private bool _inSkillSelection = false;
+        private InheritanceState _state = InheritanceState.NotInMenu;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
         private int _selectedSkillIndex = 0;
         private int _selectedSkillDisplayIndex = 0;
@@ -187,6 +187,8 @@ namespace p3ppc.manualSkillInheritance
                     $"cmp eax, {(int)InheritanceState.NotInMenu}",
                     "je continueNormally", // If not in the skill selection menu go on with the normal stuff
                     $"cmp eax, {(int)InheritanceState.ChoosingSkills}",
+                    "je retFunction",
+                    $"cmp eax, {(int)InheritanceState.ChooseSkillsMessage}",
                     "je retFunction",
                     //// Go to the fusion confirmation
                     $"mov [qword {_allowFusionConfirmation}], byte 1", // We want to allow the confirmation
@@ -316,21 +318,29 @@ namespace p3ppc.manualSkillInheritance
             _selectedSkillIndex = 0;
             _selectedSkillDisplayIndex = 0;
             _selectedSkill = Skill.None;
-            _inSkillSelection = true;
+            if (_ui.QueueCombineMessage != null && _ui.QueuedMessageWaiting != null && _ui.GetMessageState != null && _ui.AfterQueuedMessage != null)
+            {
+                _ui.QueueCombineMessage(info->SelectionContextId, 102);
+                _state = InheritanceState.ChooseSkillsMessage;
+            }
+            else
+            {
+                _state = InheritanceState.ChoosingSkills;
+            }
         }
 
         private InheritanceState ChooseInheritanceMenu(FusionMenuInfo* info)
         {
-            if (_currentPersona == null || (!_inSkillSelection && _currentPersona == null))
+            if (_currentPersona == null || (_state == InheritanceState.NotInMenu && _currentPersona == null))
                 return InheritanceState.NotInMenu;
 
             var persona = &info->ResultPersona->Persona;
 
             // Back in the menu after selecting no to the confirmation
-            if (!_inSkillSelection && _currentPersona != null)
+            if (_state == InheritanceState.NotInMenu && _currentPersona != null)
             {
                 RemoveLastInheritedSkill(_currentPersona, persona);
-                _inSkillSelection = true;
+                _state = InheritanceState.ChoosingSkills;
                 return InheritanceState.ChoosingSkills;
             }
 
@@ -339,7 +349,7 @@ namespace p3ppc.manualSkillInheritance
                 if (!_inheritanceSkills.TryGetValue((nuint)info->ResultPersona + 4, out var skills))
                 {
                     Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
-                    _inSkillSelection = false;
+                    _state = InheritanceState.NotInMenu;
                     return InheritanceState.DoneChoosingSkills;
                 }
                 _currentSkills = skills;
@@ -347,6 +357,16 @@ namespace p3ppc.manualSkillInheritance
 
             if (_selectedSkill == Skill.None)
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
+
+            if(_state == InheritanceState.ChooseSkillsMessage)
+            {
+                _ui.QueuedMessageWaiting(info->SelectionContextId, 1);
+                if (_ui.GetMessageState(info->SelectionContextId) != 0)
+                    return InheritanceState.ChoosingSkills;
+                Utils.LogDebug($"Done with choose skills message");
+                _ui.AfterQueuedMessage(info->SelectionContextId, 1);
+                _state = InheritanceState.ChoosingSkills;
+            }
 
             if (IsHeld(Input.Up, movementDelay, movementInitialDelay) && _currentSkills.Count > 1)
             {
@@ -434,7 +454,7 @@ namespace p3ppc.manualSkillInheritance
                     if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << newSkillIndex + 1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
-                        _inSkillSelection = false;
+                        _state = InheritanceState.NotInMenu;
                         return InheritanceState.DoneChoosingSkills;
                     }                    
                 }
@@ -468,7 +488,7 @@ namespace p3ppc.manualSkillInheritance
                 else
                 {
                     Utils.LogDebug("Cancelling inheritance choice");
-                    _inSkillSelection = false;
+                    _state = InheritanceState.NotInMenu;
                     _currentPersona = null;
                     _input->Pressed &= ~InputFlag.Escape; // Absorb the escape so the whole results menu doesn't close
                     return InheritanceState.NotInMenu;
@@ -480,7 +500,10 @@ namespace p3ppc.manualSkillInheritance
 
         private void PersonaMenuDisplay(PersonaMenuInfo* info)
         {
-            if (!_inSkillSelection)
+            if (_state == InheritanceState.ChooseSkillsMessage && _currentPersona == null)
+                _currentPersona = &info->Persona;
+
+            if (_state != InheritanceState.ChoosingSkills)
                 return;
 
             if (_currentPersona == null)
@@ -552,12 +575,13 @@ namespace p3ppc.manualSkillInheritance
             Utils.LogDebug("Opening results menu");
             _currentPersona = null;
             _currentSkills = null;
-            _inSkillSelection = false;
+            _state = InheritanceState.NotInMenu;
         }
 
         private enum InheritanceState
         {
             NotInMenu,
+            ChooseSkillsMessage,
             ChoosingSkills,
             DoneChoosingSkills,
         }

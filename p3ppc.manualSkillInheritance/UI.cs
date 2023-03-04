@@ -21,6 +21,10 @@ namespace p3ppc.manualSkillInheritance
         private PlaySoundEffectDelegate _playSoundEffect;
         internal RenderSprTextureDelegate RenderSprTexture;
         internal LoadCampFileDelegate LoadCampFile;
+        internal QueueCombineMessageDelegate QueueCombineMessage;
+        internal GetMessageStateDelegate GetMessageState;
+        internal QueuedMessageWaitingDelegate QueuedMessageWaiting;
+        internal AfterQueuedMessageDelegate AfterQueuedMessage;
 
         private IReverseWrapper<GetSkillColourDelegate> _getSkillColourReverseWrapper;
         private IAsmHook _skillColourHook;
@@ -181,6 +185,55 @@ namespace p3ppc.manualSkillInheritance
                 };
                 _skillTextColourHook = hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
+
+            startupScanner.AddMainModuleScan("48 89 5C 24 ?? 57 48 83 EC 20 48 0F BE D9 89 D7 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 48 8B 04 ?? 48 8D 1C ?? 8B 08", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find QueueCombineMessage, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found QueueCombineMessage at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                QueueCombineMessage = hooks.CreateWrapper<QueueCombineMessageDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
+
+            startupScanner.AddMainModuleScan("40 53 48 83 EC 20 48 0F BE D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 48 8B 0C ?? 48 85 C9 74 ?? 83 39 00", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find GetMessageState, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found GetMessageState at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                GetMessageState = hooks.CreateWrapper<GetMessageStateDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
+
+            startupScanner.AddMainModuleScan("48 89 5C 24 ?? 48 89 74 24 ?? 48 89 7C 24 ?? 41 56 48 83 EC 20 48 0F BE D9", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find QueuedMessageWaiting, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found QueuedMessageWaiting at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                QueuedMessageWaiting = hooks.CreateWrapper<QueuedMessageWaitingDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
+            
+            startupScanner.AddMainModuleScan("48 89 5C 24 ?? 57 48 83 EC 20 48 0F BE D9 89 D7 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 48 8B 04 ?? 48 8D 1C ?? 48 85 C0", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find AfterQueuedMessage, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found AfterQueuedMessage at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                AfterQueuedMessage = hooks.CreateWrapper<AfterQueuedMessageDelegate>(Utils.BaseAddress + result.Offset, out _);
+            });
+
         }
 
         private Colour GetSkillColour(PersonaDisplayInfo* displayInfo, Colour currentColour)
@@ -189,7 +242,7 @@ namespace p3ppc.manualSkillInheritance
             if (displayInfo->SkillsInfo.NumNextSkills != -1)
                 return currentColour;
             var newColour = displayInfo->SkillsInfo.NextSkills.BgColour;
-            Utils.LogDebug($"Changing colour for {(Skill)displayInfo->SkillsInfo.Skills.Id} to {newColour.R}, {newColour.G}, {newColour.B}, {newColour.A}");
+            //Utils.LogDebug($"Changing colour for {(Skill)displayInfo->SkillsInfo.Skills.Id} to {newColour.R}, {newColour.G}, {newColour.B}, {newColour.A}");
             return newColour;
         }
 
@@ -233,6 +286,33 @@ namespace p3ppc.manualSkillInheritance
             internal float Y;
         }
 
+        /// <summary>
+        /// Some function that seems to always be called after a queued message is done
+        /// Not sure if it's really needed
+        /// </summary>
+        /// <param name="contextId">The context id of the message when you queued it</param>
+        /// <param name="param_2">Something, just use 1, idk</param>
+        [Function(CallingConventions.Microsoft)]
+        internal delegate bool AfterQueuedMessageDelegate(byte contextId, int param_2);
+
+        /// <summary>
+        /// Some function that needs to be run when waiting for a queued message
+        /// </summary>
+        /// <param name="contextId">The context id of the message when you queued it</param>
+        /// <param name="param_2">Something, just use 1, idk</param>
+        [Function(CallingConventions.Microsoft)]
+        internal delegate void QueuedMessageWaitingDelegate(byte contextId, int param_2);
+
+        /// <summary>
+        /// Gets the message you are up to in a series of messages or 0 if you're done
+        /// </summary>
+        /// <param name="contextId">The context id of the message when you queued it</param>
+        /// <returns>The 1 based index of the message you're up to or 0 if you're done with the messages</returns>
+        [Function(CallingConventions.Microsoft)]
+        internal delegate int GetMessageStateDelegate(byte contextId);
+
+        [Function(CallingConventions.Microsoft)]
+        internal delegate uint QueueCombineMessageDelegate(byte contextId, int messageId);
 
         [Function(CallingConventions.Microsoft)]
         private delegate Colour GetSkillColourDelegate(PersonaDisplayInfo* displayInfo, Colour currentColour);

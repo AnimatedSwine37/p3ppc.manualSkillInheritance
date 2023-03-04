@@ -117,6 +117,8 @@ namespace p3ppc.manualSkillInheritance
                 string[] function =
                 {
                     "use64",
+                    "test rax, 0xFFFFFFFFFF000000", // If the alpha is 0 it's flashing green so don't touch it (I don't understand how it's meant to work)
+                    "je endHook",
                     "push rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
                     "mov rcx, r14", // Move display info in param1
                     "mov rdx, rax", // Move the current colour into param2
@@ -125,6 +127,7 @@ namespace p3ppc.manualSkillInheritance
                     "add rsp, 32",
                     "mov dword [rsp + 416], eax",
                     "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx",
+                    "label endHook"
                 };
                 _skillColourHook = hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
@@ -186,7 +189,7 @@ namespace p3ppc.manualSkillInheritance
             if (displayInfo->SkillsInfo.NumNextSkills != -1)
                 return currentColour;
             var newColour = displayInfo->SkillsInfo.NextSkills.BgColour;
-            //Utils.LogDebug($"Changing colour for {(Skill)displayInfo->SkillsInfo.Skills.Id} to {newColour.R}, {newColour.G}, {newColour.B}, {newColour.A}");
+            Utils.LogDebug($"Changing colour for {(Skill)displayInfo->SkillsInfo.Skills.Id} to {newColour.R}, {newColour.G}, {newColour.B}, {newColour.A}");
             return newColour;
         }
 

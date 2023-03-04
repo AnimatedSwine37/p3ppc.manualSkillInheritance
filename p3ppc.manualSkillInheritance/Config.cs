@@ -25,6 +25,11 @@ namespace p3ppc.manualSkillInheritance.Configuration
             The `DefaultValue` attribute is used as part of the `Reset` button in Reloaded-Launcher.
         */
 
+        [DisplayName("Empty Skill Name")]
+        [Description("What text is shown for empty skills")]
+        [DefaultValue("-------")]
+        public string EmptySkillName { get; set; } = "-------";
+
         [DisplayName("Debug Mode")]
         [Description("Logs additional information to the console that is useful for debugging.")]
         [DefaultValue(false)]

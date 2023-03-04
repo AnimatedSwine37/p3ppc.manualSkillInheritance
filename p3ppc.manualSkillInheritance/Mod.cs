@@ -105,7 +105,7 @@ namespace p3ppc.manualSkillInheritance
                 return;
             }
 
-            _ui = new UI(startupScanner, _hooks);
+            _ui = new UI(startupScanner, _hooks, _configuration);
 
             _allowFusionConfirmation = _memory.Allocate(1);
 
@@ -607,6 +607,7 @@ namespace p3ppc.manualSkillInheritance
             // Apply settings from configuration.
             // ... your code here.
             _configuration = configuration;
+            _ui.ConfigUpdated(configuration);
             _logger.WriteLine($"[{_modConfig.ModId}] Config Updated: Applying");
         }
         #endregion

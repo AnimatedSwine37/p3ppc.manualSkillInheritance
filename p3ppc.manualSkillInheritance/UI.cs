@@ -1,7 +1,9 @@
-﻿using Reloaded.Hooks.Definitions;
+﻿using p3ppc.manualSkillInheritance.Configuration;
+using Reloaded.Hooks.Definitions;
 using Reloaded.Hooks.Definitions.Enums;
 using Reloaded.Hooks.Definitions.X64;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
+using Reloaded.Memory.Sources;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,11 +32,20 @@ namespace p3ppc.manualSkillInheritance
         private IAsmHook _skillColourHook;
         private IAsmHook _setupSkillTextColourHook;
         private IAsmHook _skillTextColourHook;
+        private IHook<GetSkillNameDelegate> _getSkillNameHook;
+        private readonly string* _emptySkillName;
+        private IMemory _memory;
+        private Config _config;
 
         internal bool* IsFemc;
 
-        internal UI(IStartupScanner startupScanner, IReloadedHooks hooks)
+        internal UI(IStartupScanner startupScanner, IReloadedHooks hooks, Config config)
         {
+            _memory = Memory.Instance;
+            _config = config;
+            _emptySkillName = (string*)_memory.Allocate(50);
+            _memory.WriteRaw((nuint)_emptySkillName, Encoding.ASCII.GetBytes(config.EmptySkillName));
+            
             startupScanner.AddMainModuleScan("48 89 E0 48 89 58 ?? 48 89 68 ?? 56 57 41 54", result =>
             {
                 if (!result.Found)
@@ -190,7 +201,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find QueueCombineMessage, stuff won't work :(");
+                    Utils.LogError($"Unable to find QueueCombineMessage, choose skills message won't display :(");
                     return;
                 }
                 Utils.LogDebug($"Found QueueCombineMessage at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -202,7 +213,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find GetMessageState, stuff won't work :(");
+                    Utils.LogError($"Unable to find GetMessageState, choose skills message won't display :(");
                     return;
                 }
                 Utils.LogDebug($"Found GetMessageState at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -214,7 +225,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find QueuedMessageWaiting, stuff won't work :(");
+                    Utils.LogError($"Unable to find QueuedMessageWaiting, choose skills message won't display :(");
                     return;
                 }
                 Utils.LogDebug($"Found QueuedMessageWaiting at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -226,7 +237,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find AfterQueuedMessage, stuff won't work :(");
+                    Utils.LogError($"Unable to find AfterQueuedMessage, choose skills message won't display :(");
                     return;
                 }
                 Utils.LogDebug($"Found AfterQueuedMessage at 0x{result.Offset + Utils.BaseAddress:X}");
@@ -234,7 +245,33 @@ namespace p3ppc.manualSkillInheritance
                 AfterQueuedMessage = hooks.CreateWrapper<AfterQueuedMessageDelegate>(Utils.BaseAddress + result.Offset, out _);
             });
 
+            startupScanner.AddMainModuleScan("40 53 48 83 EC 20 0F B7 D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? B8 70 02 00 00 66 3B D8 72 ?? 8B 15 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? FF C2 E8 ?? ?? ?? ?? 8B 05 ?? ?? ?? ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find GetSkillName, empty skills won't change to ----- :(");
+                    return;
+                }
+                Utils.LogDebug($"Found GetSkillName at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                _getSkillNameHook = hooks.CreateHook<GetSkillNameDelegate>(GetSkillName, Utils.BaseAddress + result.Offset).Activate();
+            });
+
         }
+
+        internal void ConfigUpdated(Config config)
+        {
+            if(config.EmptySkillName != _config.EmptySkillName)
+                _memory.WriteRaw((nuint)_emptySkillName, Encoding.ASCII.GetBytes($"{config.EmptySkillName}\0"));
+            _config = config;
+        }
+        
+        private string* GetSkillName(short skillId)
+        {
+            if (skillId == -1)
+                return _emptySkillName;
+            return _getSkillNameHook.OriginalFunction(skillId);
+        } 
 
         private Colour GetSkillColour(PersonaDisplayInfo* displayInfo, Colour currentColour)
         {
@@ -285,6 +322,9 @@ namespace p3ppc.manualSkillInheritance
             /// </summary>
             internal float Y;
         }
+
+        [Function(CallingConventions.Microsoft)]
+        private delegate string* GetSkillNameDelegate(short skillId);
 
         /// <summary>
         /// Some function that seems to always be called after a queued message is done

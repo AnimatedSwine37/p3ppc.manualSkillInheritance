@@ -74,6 +74,7 @@ namespace p3ppc.manualSkillInheritance
         private IReverseWrapper<PersonaMenuDisplayDelegate> _personaMenuDisplayReverseWrapper;
         private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
         private InputStruct* _input;
+        private IAsmHook _fusionResultsInitPersonaHook;
 
         private InheritanceState _state = InheritanceState.NotInMenu;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
@@ -91,8 +92,6 @@ namespace p3ppc.manualSkillInheritance
 
         public Mod(ModContext context)
         {
-            //Debugger.Launch();
-
             _modLoader = context.ModLoader;
             _hooks = context.Hooks;
             _logger = context.Logger;
@@ -290,6 +289,35 @@ namespace p3ppc.manualSkillInheritance
                 _resultsMenuOpeningHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
 
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 8B 0F 8B D5", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find FusionResultsInitPersona, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found FusionResultsInitPersona at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "push rax",
+                    "push rdx",
+                    "mov rax, 2",
+                    "mov rdx, [rcx+0x48]",
+                    "lea rdx, [rdx+0xA8]", // The PersonaSkillsDisplayInfo of the new Persona
+                    "label loopStart",
+                    // Go through each skill and set them all to 0 so stuff doesn't break when switching between Personas
+                    "mov word [rdx + rax], 0",
+                    "add rax, 12",
+                    "cmp rax, 12*8",
+                    "jle loopStart",
+                    "pop rdx",
+                    "pop rax",
+                };
+
+                _fusionResultsInitPersonaHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
 
         }
 
@@ -506,7 +534,10 @@ namespace p3ppc.manualSkillInheritance
         private void PersonaMenuDisplay(PersonaMenuInfo* info)
         {
             if (_state == InheritanceState.ChooseSkillsMessage && _currentPersona == null)
+            {
                 _currentPersona = &info->Persona;
+                Utils.LogDebug($"Current persona is at 0x{(nuint)_currentPersona:X}");
+            }
 
             if (_state != InheritanceState.ChoosingSkills)
                 return;

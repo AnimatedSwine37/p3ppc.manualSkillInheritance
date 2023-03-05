@@ -7,13 +7,16 @@ using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Memory.Sources;
 using Reloaded.Mod.Interfaces;
 using System.Diagnostics;
-using static p3ppc.manualSkillInheritance.FusionMenu;
-using static p3ppc.manualSkillInheritance.Inputs;
-using static p3ppc.manualSkillInheritance.PersonaMenu;
-using static p3ppc.manualSkillInheritance.Personas;
-using static p3ppc.manualSkillInheritance.Skills;
-using static p3ppc.manualSkillInheritance.UI;
+using static p3ppc.manualSkillInheritance.UI.UI.FusionMenu;
+using static p3ppc.manualSkillInheritance.Models.Inputs;
+using static p3ppc.manualSkillInheritance.UI.UI.PersonaMenu;
+using static p3ppc.manualSkillInheritance.Models.Personas;
+using static p3ppc.manualSkillInheritance.Models.Skills;
 using IReloadedHooks = Reloaded.Hooks.ReloadedII.Interfaces.IReloadedHooks;
+using p3ppc.manualSkillInheritance.Models;
+using p3ppc.manualSkillInheritance.UI;
+using static p3ppc.manualSkillInheritance.UI.UIUtils;
+using static p3ppc.manualSkillInheritance.Models.FileUtils;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -55,7 +58,8 @@ namespace p3ppc.manualSkillInheritance
 
         private IMemory _memory;
 
-        private UI _ui;
+        private UIUtils _ui;
+        private FileUtils _files;
 
         private IAsmHook _setInheritanceHook;
         private IAsmHook _fusionResultsConfirmHook;
@@ -78,6 +82,7 @@ namespace p3ppc.manualSkillInheritance
         private PersonaDisplayInfo* _currentPersona;
         private Skill _selectedSkill;
         private List<Skill>? _currentSkills;
+        private GameFile* _inheritanceSpr;
 
         private nuint _allowFusionConfirmation;
 
@@ -86,6 +91,7 @@ namespace p3ppc.manualSkillInheritance
 
         public Mod(ModContext context)
         {
+            //Debugger.Launch();
 
             _modLoader = context.ModLoader;
             _hooks = context.Hooks;
@@ -105,11 +111,10 @@ namespace p3ppc.manualSkillInheritance
                 return;
             }
 
-            _ui = new UI(startupScanner, _hooks, _configuration);
+            _ui = new UIUtils(startupScanner, _hooks, _configuration);
+            _files = new FileUtils(_hooks, startupScanner);
 
             _allowFusionConfirmation = _memory.Allocate(1);
-
-            //PList<int>.Initialise(startupScanner, _hooks);
 
             startupScanner.AddMainModuleScan("48 C1 E1 02 E8 ?? ?? ?? ?? 4C 8B E0", result =>
             {
@@ -510,24 +515,47 @@ namespace p3ppc.manualSkillInheritance
                 _currentPersona = &info->Persona;
 
             // Render background
-            var spr = _ui.LoadCampFile("c_main_01.spr");
-            if (spr == 0)
+            var baseSpr = _ui.LoadCampFile("c_main_01.spr");
+            if(baseSpr == (GameFile*)0)
             {
                 Utils.LogError($"Error loading c_main_01.spr");
                 return;
             }
 
+            if(_inheritanceSpr == (GameFile*)0)
+            {
+                _inheritanceSpr = _files.LoadFile("facility/combine/inheritance.spr");
+                if (_inheritanceSpr == (GameFile*)0)
+                {
+                    Utils.LogError($"Error loading facility/combine/inheritance.spr");
+                    return;
+                }                
+            }
+
+            if (_inheritanceSpr->LoadStatus != FileLoadStatus.Done)
+            {
+                Utils.LogDebug($"LoadStatus for inheritance.spr is {_inheritanceSpr->LoadStatus}");
+                return;
+            }
+
+            //Utils.LogDebug($"Loaded inheritance.spr at 0x{(nuint)inheritanceSpr:X}");
+            //Utils.LogDebug($"Loaded c_main_01.spr at 0x{(nuint)baseSpr:X}");
+
             // Background rectangles
             var bgColour = Colours.SkillFg;
-            _ui.RenderSprTexture(spr, 0x1b4, 97, 78, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
-            _ui.RenderSprTexture(spr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            _ui.RenderSprTexture(baseSpr, 0x1b4, 97, 78, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            _ui.RenderSprTexture(baseSpr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             // Choose a skill text
             var textColour = Colours.SkillBg;
-            _ui.RenderSprTexture(spr, 696, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            _ui.RenderSprTexture(_inheritanceSpr, 0, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+
 
             // Render skill help
             if (_ui.RenderSkillHelp != null)
                 _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
+
+            // Render scroll bar
+            //_ui.RenderSprTexture(inheritanceSpr, 697, 259, 81, 0, 255, 255, 255, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
             // Render skill buttons
             if (_ui.RenderSkill != null && _currentSkills != null)
@@ -575,6 +603,7 @@ namespace p3ppc.manualSkillInheritance
             Utils.LogDebug("Opening results menu");
             _currentPersona = null;
             _currentSkills = null;
+            _inheritanceSpr = (GameFile*)0;
             _state = InheritanceState.NotInMenu;
         }
 

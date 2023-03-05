@@ -38,7 +38,10 @@
     <Content Include="ModConfig.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Update="P5REssentials\CPK\umd0\init_free.bin">
+    <None Update="P5REssentials\CPK\umd0\facility\combine.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="P5REssentials\CPK\umd0\facility\combine\inheritance.spr">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Preview.png">

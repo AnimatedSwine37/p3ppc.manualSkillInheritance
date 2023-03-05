@@ -485,7 +485,7 @@ namespace p3ppc.manualSkillInheritance
                         if (_selectedSkillIndex < 2)
                             _selectedSkillDisplayIndex = _selectedSkillIndex;
                         else if (_selectedSkillIndex >= _currentSkills.Count - 2)
-                            _selectedSkillDisplayIndex = 5 - (_currentSkills.Count - _selectedSkillIndex);
+                            _selectedSkillDisplayIndex = (_currentSkills.Count < 5 ? _currentSkills.Count : 5) - (_currentSkills.Count - _selectedSkillIndex);
                         else
                             _selectedSkillDisplayIndex = 2;
                     }

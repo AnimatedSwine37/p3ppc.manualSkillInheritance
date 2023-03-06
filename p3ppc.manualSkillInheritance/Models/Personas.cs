@@ -155,7 +155,7 @@ namespace p3ppc.manualSkillInheritance.Models
             [FieldOffset(32)]
             internal byte Luck;
 
-            [FieldOffset(64)]
+            [FieldOffset(60)]
             internal fixed short InheritedSkills[8];
         }
 

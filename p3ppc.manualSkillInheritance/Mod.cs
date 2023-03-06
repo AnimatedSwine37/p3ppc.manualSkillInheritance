@@ -391,7 +391,7 @@ namespace p3ppc.manualSkillInheritance
             if (_selectedSkill == Skill.None)
                 _selectedSkill = _currentSkills[_selectedSkillIndex];
 
-            if(_state == InheritanceState.ChooseSkillsMessage)
+            if (_state == InheritanceState.ChooseSkillsMessage)
             {
                 _ui.QueuedMessageWaiting(info->SelectionContextId, 1);
                 if (_ui.GetMessageState(info->SelectionContextId) != 0)
@@ -480,7 +480,7 @@ namespace p3ppc.manualSkillInheritance
             if (_input->Pressed.HasFlag(InputFlag.Confirm))
             {
                 var newSkillIndex = AddInheritedSkill(_currentPersona, persona, _selectedSkill);
-                if(newSkillIndex != -1)
+                if (newSkillIndex != -1)
                 {
                     _ui.PlaySoundEffect(SoundEffect.Confirm);
 
@@ -489,7 +489,7 @@ namespace p3ppc.manualSkillInheritance
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
                         _state = InheritanceState.NotInMenu;
                         return InheritanceState.DoneChoosingSkills;
-                    }                    
+                    }
                 }
                 else
                 {
@@ -547,20 +547,20 @@ namespace p3ppc.manualSkillInheritance
 
             // Render background
             var baseSpr = _ui.LoadCampFile("c_main_01.spr");
-            if(baseSpr == (GameFile*)0)
+            if (baseSpr == (GameFile*)0)
             {
                 Utils.LogError($"Error loading c_main_01.spr");
                 return;
             }
 
-            if(_inheritanceSpr == (GameFile*)0)
+            if (_inheritanceSpr == (GameFile*)0)
             {
                 _inheritanceSpr = _files.LoadFile("facility/combine/inheritance.spr");
                 if (_inheritanceSpr == (GameFile*)0)
                 {
                     Utils.LogError($"Error loading facility/combine/inheritance.spr");
                     return;
-                }                
+                }
             }
 
             if (_inheritanceSpr->LoadStatus != FileLoadStatus.Done)
@@ -585,8 +585,17 @@ namespace p3ppc.manualSkillInheritance
             if (_ui.RenderSkillHelp != null)
                 _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
 
-            // Render scroll bar
-            //_ui.RenderSprTexture(inheritanceSpr, 697, 259, 81, 0, 255, 255, 255, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            if (_currentSkills !=  null && _currentSkills.Count > 5)
+            {
+                // Render scroll bar bg
+                _ui.RenderSprTexture(_inheritanceSpr, 1, 251, 82.6f, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+
+                float incrementSize = (138.6f-83) / (_currentSkills.Count - 5);
+                int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
+                
+                // Render scroll bar slider (up to 138.6 y)
+                _ui.RenderSprTexture(_inheritanceSpr, 2, 251.28f, 83+(incrementSize*startIndex), 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            }
 
             // Render skill buttons
             if (_ui.RenderSkill != null && _currentSkills != null)
@@ -595,7 +604,7 @@ namespace p3ppc.manualSkillInheritance
                 persona.SkillsInfo.NumSkills = 1;
                 Position pos = new Position { X = 100, Y = 84.5f };
                 int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
-                                
+
                 // Display the skills (up to 5)
                 for (int i = startIndex; i < startIndex + 5; i++)
                 {
@@ -603,16 +612,16 @@ namespace p3ppc.manualSkillInheritance
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
                     persona.SelectedSlot = -1;
                     // Different colour for the selected skill
-                    if(i == _selectedSkillIndex)
+                    if (i == _selectedSkillIndex)
                     {
                         persona.SkillsInfo.NextSkills.BgColour = Colours.SelectedBg;
                         persona.SkillsInfo.NextSkills.FgColour = Colours.SelectedFg;
                         if (HasSkill(_currentPersona, _currentSkills[i]))
-                            persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenSelectedFg; 
+                            persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenSelectedFg;
                         persona.SkillsInfo.NumNextSkills = -1;
                     }
                     // Different colour for skills that have already been selected
-                    else if(HasSkill(_currentPersona, _currentSkills[i]))
+                    else if (HasSkill(_currentPersona, _currentSkills[i]))
                     {
                         persona.SkillsInfo.NextSkills.BgColour = Colours.AlreadyChosenBg;
                         persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenFg;

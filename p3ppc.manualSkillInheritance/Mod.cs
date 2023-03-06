@@ -78,6 +78,7 @@ namespace p3ppc.manualSkillInheritance
 
         private InheritanceState _state = InheritanceState.NotInMenu;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
+        private Dictionary<Skill, short> _removedNextSkills = new();
         private int _selectedSkillIndex = 0;
         private int _selectedSkillDisplayIndex = 0;
         private PersonaDisplayInfo* _currentPersona;
@@ -372,7 +373,7 @@ namespace p3ppc.manualSkillInheritance
             // Back in the menu after selecting no to the confirmation
             if (_state == InheritanceState.NotInMenu && _currentPersona != null)
             {
-                RemoveLastInheritedSkill(_currentPersona, persona);
+                RemoveLastInheritedSkill(_currentPersona, persona, _removedNextSkills);
                 _state = InheritanceState.ChoosingSkills;
                 return InheritanceState.ChoosingSkills;
             }
@@ -479,7 +480,7 @@ namespace p3ppc.manualSkillInheritance
             }
             if (_input->Pressed.HasFlag(InputFlag.Confirm))
             {
-                var newSkillIndex = AddInheritedSkill(_currentPersona, persona, _selectedSkill);
+                var newSkillIndex = AddInheritedSkill(_currentPersona, persona, _selectedSkill, _removedNextSkills);
                 if (newSkillIndex != -1)
                 {
                     _ui.PlaySoundEffect(SoundEffect.Confirm);
@@ -500,7 +501,7 @@ namespace p3ppc.manualSkillInheritance
             if (_input->Pressed.HasFlag(InputFlag.Escape))
             {
                 _ui.PlaySoundEffect(SoundEffect.Back);
-                var removedSkill = RemoveLastInheritedSkill(_currentPersona, persona);
+                var removedSkill = RemoveLastInheritedSkill(_currentPersona, persona, _removedNextSkills);
                 if (removedSkill != Skill.None)
                 {
                     // Move the cursor back to the skill that was just removed
@@ -643,6 +644,7 @@ namespace p3ppc.manualSkillInheritance
             Utils.LogDebug("Opening results menu");
             _currentPersona = null;
             _currentSkills = null;
+            _removedNextSkills.Clear();
             _inheritanceSpr = (GameFile*)0;
             _state = InheritanceState.NotInMenu;
         }

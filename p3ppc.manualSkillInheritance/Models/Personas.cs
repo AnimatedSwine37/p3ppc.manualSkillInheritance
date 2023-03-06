@@ -39,7 +39,7 @@ namespace p3ppc.manualSkillInheritance.Models
         /// <param name="persona">The actual Persona</param>
         /// <param name="skill">The skill to add</param>
         /// <returns>The index of the newly added skill or -1 if none was added</returns>
-        internal static int AddInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona, Skill skill)
+        internal static int AddInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona, Skill skill, Dictionary<Skill, short> removedNextSkills)
         {
             var currentSkills = persona->Skills;
             int emptySkillIndex = -1;
@@ -61,6 +61,15 @@ namespace p3ppc.manualSkillInheritance.Models
                 (&displayPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)skill;
                 persona->Skills[emptySkillIndex] = (short)skill;
                 AddInheritedSkill(persona, skill);
+                for (int i = 0; i < 32; i++)
+                {
+                    var nextSkill = (&displayPersona->SkillsInfo.NextSkills)[i];
+                    if (nextSkill.Id == (short)skill)
+                    {
+                        removedNextSkills.Add(skill, displayPersona->SkillsInfo.NextSkillsLevels[i]);
+                        RemoveNextSkill(&displayPersona->SkillsInfo, i);
+                    }
+                }
                 Utils.LogDebug($"Added {skill} to {persona->Id}");
             }
             else
@@ -82,13 +91,55 @@ namespace p3ppc.manualSkillInheritance.Models
             }
         }
 
+        private static void AddNextSkill(PersonaSkillsDisplayInfo* skillsInfo, Skill skill, short level)
+        {
+            short lastLevel = level;
+            short lastSkill = (short)skill;
+            var numNextSkills = skillsInfo->NumNextSkills;
+            for (int i = 0; i < numNextSkills; i++)
+            {
+                if (skillsInfo->NextSkillsLevels[i] >= lastLevel)
+                {
+                    short tempLevel = skillsInfo->NextSkillsLevels[i];
+                    short tempSkill = (&skillsInfo->NextSkills)[i].Id;
+                    Utils.LogDebug($"Set skill at index {i} to {(Skill)lastSkill}");
+                    skillsInfo->NextSkillsLevels[i] = lastLevel;
+                    (&skillsInfo->NextSkills)[i].Id = lastSkill;
+                    lastLevel = tempLevel;
+                    lastSkill = tempSkill;
+                }
+            }
+            Utils.LogDebug($"Set skill at index {numNextSkills} to {(Skill)lastSkill}");
+            skillsInfo->NextSkillsLevels[numNextSkills] = lastLevel;
+            (&skillsInfo->NextSkills)[numNextSkills].Id = lastSkill;
+            skillsInfo->NumNextSkills++;
+        }
+
+        private static void RemoveNextSkill(PersonaSkillsDisplayInfo* skillsInfo, int index)
+        {
+            Utils.LogDebug($"Removing next skill at index {index}");
+            for (int i = index; i < skillsInfo->NumNextSkills; i++)
+            {
+                Utils.LogDebug($"Set skill at index {i} to {(Skill)(&skillsInfo->NextSkills)[i + 1].Id}");
+                skillsInfo->NextSkillsLevels[i] = skillsInfo->NextSkillsLevels[i + 1];
+                (&skillsInfo->NextSkills)[i].Id = (&skillsInfo->NextSkills)[i + 1].Id;
+            }
+            if (skillsInfo->NumNextSkills == 32)
+            {
+                skillsInfo->NextSkillsLevels[31] = 0;
+                (&skillsInfo->NextSkills)[31].Id = 0;
+            }
+            skillsInfo->NumNextSkills--;
+        }
+
+
         /// <summary>
         /// Removes the last skill a Persona inherited
         /// </summary>
         /// <param name="displayPersona">The display persona</param>
         /// <param name="persona">The actual Persona</param>
         /// <returns>The Skill that was removed or Skill.None if none was removed (they haven't inherited anything yet)</returns>
-        internal static Skill RemoveLastInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona)
+        internal static Skill RemoveLastInheritedSkill(PersonaDisplayInfo* displayPersona, Persona* persona, Dictionary<Skill, short> removedNextSkills)
         {
             var mask = displayPersona->SkillsInfo.NewSkillsMask;
             for (int i = 7; i >= 0; i--)
@@ -100,6 +151,13 @@ namespace p3ppc.manualSkillInheritance.Models
                     persona->Skills[i] = -1;
                     (&displayPersona->SkillsInfo.Skills)[i].Id = -1;
                     persona->Skills[i] = -1;
+                    if (removedNextSkills.ContainsKey(removedSkill))
+                    {
+                        var nextSkilllLevel = removedNextSkills[removedSkill];
+                        removedNextSkills.Remove(removedSkill);
+                        AddNextSkill(&displayPersona->SkillsInfo, removedSkill, nextSkilllLevel);
+
+                    }
                     RemoveLastInheritedSkill(persona);
                     return removedSkill;
                 }

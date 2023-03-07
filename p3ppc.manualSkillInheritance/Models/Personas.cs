@@ -60,7 +60,7 @@ namespace p3ppc.manualSkillInheritance.Models
             {
                 (&displayPersona->SkillsInfo.Skills)[emptySkillIndex].Id = (short)skill;
                 persona->Skills[emptySkillIndex] = (short)skill;
-                AddInheritedSkill(persona, skill);
+                persona->InheritedSkills[emptySkillIndex] = (short)skill;
                 for (int i = 0; i < 32; i++)
                 {
                     var nextSkill = (&displayPersona->SkillsInfo.NextSkills)[i];
@@ -77,18 +77,6 @@ namespace p3ppc.manualSkillInheritance.Models
                 Utils.LogDebug($"Cannot add {skill} to {persona->Id}");
             }
             return emptySkillIndex;
-        }
-
-        private static void AddInheritedSkill(Persona* persona, Skill skill)
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                if (persona->InheritedSkills[i] <= 0)
-                {
-                    persona->InheritedSkills[i] = (short)skill;
-                    return;
-                }
-            }
         }
 
         private static void AddNextSkill(PersonaSkillsDisplayInfo* skillsInfo, Skill skill, short level)
@@ -158,24 +146,11 @@ namespace p3ppc.manualSkillInheritance.Models
                         AddNextSkill(&displayPersona->SkillsInfo, removedSkill, nextSkilllLevel);
 
                     }
-                    RemoveLastInheritedSkill(persona);
+                    persona->InheritedSkills[i] = -1;
                     return removedSkill;
                 }
             }
             return Skill.None;
-        }
-
-        private static void RemoveLastInheritedSkill(Persona* persona)
-        {
-            for (int i = 7; i >= 0; i--)
-            {
-                var inheritedSkills = persona->InheritedSkills;
-                if (inheritedSkills[i] != 0 && inheritedSkills[i] != -1)
-                {
-                    persona->InheritedSkills[i] = -1;
-                    break;
-                }
-            }
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -213,7 +188,7 @@ namespace p3ppc.manualSkillInheritance.Models
             [FieldOffset(32)]
             internal byte Luck;
 
-            [FieldOffset(60)]
+            [FieldOffset(58)]
             internal fixed short InheritedSkills[8];
         }
 

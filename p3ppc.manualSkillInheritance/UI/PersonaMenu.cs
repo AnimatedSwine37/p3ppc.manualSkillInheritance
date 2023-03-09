@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static p3ppc.manualSkillInheritance.Models.Skills;
 using static p3ppc.manualSkillInheritance.UI.Colours;
 
 namespace p3ppc.manualSkillInheritance.UI.UI
@@ -63,6 +64,23 @@ namespace p3ppc.manualSkillInheritance.UI.UI
 
             // Not what this actually is but we're using it to change colours
             internal Colour FgColour;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        internal struct SkillTextDisplayInfo
+        {
+            [FieldOffset(2)]
+            internal SkillTextType TextType;
+
+            [FieldOffset(10)]
+            internal Skill Skill; 
+        }
+
+        internal enum SkillTextType : short
+        {
+            Normal = 0,
+            Selected = 1,
+            New = 5,
         }
     }
 }

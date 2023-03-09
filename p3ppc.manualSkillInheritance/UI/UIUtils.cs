@@ -269,7 +269,7 @@ namespace p3ppc.manualSkillInheritance.UI
 
         private string* GetSkillName(short skillId)
         {
-            if (skillId == -1)
+            if (skillId == -1 && _config.EmptySkillsUseText)
                 return _emptySkillName;
             return _getSkillNameHook.OriginalFunction(skillId);
         }

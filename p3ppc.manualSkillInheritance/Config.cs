@@ -25,6 +25,11 @@ namespace p3ppc.manualSkillInheritance.Configuration
             The `DefaultValue` attribute is used as part of the `Reset` button in Reloaded-Launcher.
         */
 
+        [DisplayName("Use Text For Empty Skills")]
+        [Description("If enabled text will be used for empty skills which gives the appearance of much thinner dashes.\nIf disabled empty skills will be indicated by thick dashes.")]
+        [DefaultValue(false)]
+        public bool EmptySkillsUseText { get; set; } = false;
+
         [DisplayName("Empty Skill Name")]
         [Description("What text is shown for empty skills")]
         [DefaultValue("-------")]

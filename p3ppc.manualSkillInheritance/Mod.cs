@@ -75,6 +75,7 @@ namespace p3ppc.manualSkillInheritance
         private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
         private InputStruct* _input;
         private IAsmHook _fusionResultsInitPersonaHook;
+        private IHook<RenderSkillNameDelegate> _renderSkillName;
 
         private InheritanceState _state = InheritanceState.NotInMenu;
         private Dictionary<nuint, List<Skill>> _inheritanceSkills = new();
@@ -320,6 +321,17 @@ namespace p3ppc.manualSkillInheritance
                 _fusionResultsInitPersonaHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
             });
 
+            startupScanner.AddMainModuleScan("48 89 5C 24 ?? 57 48 81 EC 80 00 00 00 0F 29 74 24 ?? 49 8B F9", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderSkillName, thick dashes for empty skills won't be able to be rendered :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderSkillName at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                _renderSkillName = _hooks.CreateHook<RenderSkillNameDelegate>(RenderSkillName, Utils.BaseAddress + result.Offset).Activate();
+            });
         }
 
         private void LogInheritance(nuint skillsListAddr, Persona* personaPtr)
@@ -586,16 +598,16 @@ namespace p3ppc.manualSkillInheritance
             if (_ui.RenderSkillHelp != null)
                 _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
 
-            if (_currentSkills !=  null && _currentSkills.Count > 5)
+            if (_currentSkills != null && _currentSkills.Count > 5)
             {
                 // Render scroll bar bg
                 _ui.RenderSprTexture(_inheritanceSpr, 1, 251, 82.6f, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
-                float incrementSize = (138.6f-83) / (_currentSkills.Count - 5);
+                float incrementSize = (138.6f - 83) / (_currentSkills.Count - 5);
                 int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
-                
+
                 // Render scroll bar slider (up to 138.6 y)
-                _ui.RenderSprTexture(_inheritanceSpr, 2, 251.28f, 83+(incrementSize*startIndex), 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+                _ui.RenderSprTexture(_inheritanceSpr, 2, 251.28f, 83 + (incrementSize * startIndex), 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             }
 
             // Render skill buttons
@@ -649,6 +661,48 @@ namespace p3ppc.manualSkillInheritance
             _state = InheritanceState.NotInMenu;
         }
 
+        private void RenderSkillName(Position position, long param_2, byte alpha, SkillTextDisplayInfo* textInfo, long param_5, float param_6)
+        {
+            if (textInfo->Skill != Skill.None || _configuration.EmptySkillsUseText)
+            {
+                _renderSkillName.OriginalFunction(position, param_2, alpha, textInfo, param_5, param_6);
+            }
+            else if (!_configuration.EmptySkillsUseText)
+            {
+                if (_inheritanceSpr == (GameFile*)0)
+                {
+                    _inheritanceSpr = _files.LoadFile("facility/combine/inheritance.spr");
+                    if (_inheritanceSpr == (GameFile*)0)
+                    {
+                        Utils.LogError($"Error loading facility/combine/inheritance.spr");
+                        return;
+                    }
+                }
+                if (_inheritanceSpr->LoadStatus != FileLoadStatus.Done)
+                    return;
+                Colours.Colour textColour;
+                switch(textInfo->TextType)
+                {
+                    case SkillTextType.Normal:
+                        textColour = Colours.SkillFg;
+                        break;
+                    case SkillTextType.Selected:
+                        textColour = Colours.SkillBg;
+                        break;
+                    case SkillTextType.New:
+                        textColour = Colours.SelectedBg;
+                        break;
+                    default:
+                        textColour = Colours.SkillFg;
+                        break;
+                }
+                for (int i = 0; i < 5; i++)
+                {
+                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X -39.25f + (17.1f * i), position.Y + 8.3f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
+                }
+            }
+        }
+
         private enum InheritanceState
         {
             NotInMenu,
@@ -656,6 +710,9 @@ namespace p3ppc.manualSkillInheritance
             ChoosingSkills,
             DoneChoosingSkills,
         }
+
+        [Function(CallingConventions.Microsoft)]
+        private delegate void RenderSkillNameDelegate(Position position, long param_2, byte alpha, SkillTextDisplayInfo* textInfo, long param_5, float param_6);
 
         [Function(CallingConventions.Microsoft)]
         private delegate void ResultsMenuOpeningDelegate();

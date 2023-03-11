@@ -291,7 +291,7 @@ namespace p3ppc.manualSkillInheritance
                 _resultsMenuOpeningHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
 
-            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 8B 0F 8B D5", result =>
+            startupScanner.AddMainModuleScan("4E 8B 84 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 0F", result =>
             {
                 if (!result.Found)
                 {
@@ -318,7 +318,7 @@ namespace p3ppc.manualSkillInheritance
                     "pop rax",
                 };
 
-                _fusionResultsInitPersonaHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+                _fusionResultsInitPersonaHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteAfter).Activate();
             });
 
             startupScanner.AddMainModuleScan("48 89 5C 24 ?? 57 48 81 EC 80 00 00 00 0F 29 74 24 ?? 49 8B F9", result =>

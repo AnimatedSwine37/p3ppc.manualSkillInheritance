@@ -73,8 +73,11 @@ namespace p3ppc.manualSkillInheritance
         private IReverseWrapper<ChooseInheritanceDelegate> _chooseInheritanceReverseWrapper;
         private IReverseWrapper<PersonaMenuDisplayDelegate> _personaMenuDisplayReverseWrapper;
         private IReverseWrapper<ResultsMenuOpeningDelegate> _resultsMenuOpeningReverseWrapper;
+        private IReverseWrapper<RenderPromptTextDelegate> _renderPromptTextReverseWrapper;
         private InputStruct* _input;
         private IAsmHook _fusionResultsInitPersonaHook;
+        private IAsmHook _renderButtonPromptTextHook;
+        private IAsmHook _renderButtonPromptHook;
         private IHook<RenderSkillNameDelegate> _renderSkillName;
 
         private InheritanceState _state = InheritanceState.NotInMenu;
@@ -86,6 +89,7 @@ namespace p3ppc.manualSkillInheritance
         private Skill _selectedSkill;
         private List<Skill>? _currentSkills;
         private GameFile* _inheritanceSpr;
+        private bool* _inInheritanceMenu;
 
         private nuint _allowFusionConfirmation;
 
@@ -116,6 +120,8 @@ namespace p3ppc.manualSkillInheritance
             _files = new FileUtils(_hooks, startupScanner);
 
             _allowFusionConfirmation = _memory.Allocate(1);
+            _inInheritanceMenu = (bool*)_memory.Allocate(4);
+            *_inInheritanceMenu = false;
 
             startupScanner.AddMainModuleScan("48 C1 E1 02 E8 ?? ?? ?? ?? 4C 8B E0", result =>
             {
@@ -332,6 +338,59 @@ namespace p3ppc.manualSkillInheritance
 
                 _renderSkillName = _hooks.CreateHook<RenderSkillNameDelegate>(RenderSkillName, Utils.BaseAddress + result.Offset).Activate();
             });
+
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 8B B4 24 ?? ?? ?? ?? F3 0F 10 3D ?? ?? ?? ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderButtonPromptText, correct button prompts won't show :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderButtonPromptText at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "cmp dword [rcx+8], 0x10",
+                    "jne endHook",
+                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    "jne endHook",
+                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
+                    "sub rsp, 40",
+                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(RenderPromptText, out _renderPromptTextReverseWrapper)}",
+                    "add rsp, 40",
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
+                    // Skip over the normal text rendering
+                    $"mov esi, dword [rsp + 0xd8]",
+                    $"{_hooks.Utilities.GetAbsoluteJumpMnemonics(Utils.BaseAddress + result.Offset + 12, true)}", 
+                    "label endHook"
+                };
+
+                _renderButtonPromptTextHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("66 0F 6E F3 0F 5B F6 0F 28 CE", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderButtonPrompt, button prompts will be positioned weirdly :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderButtonPrompt at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    "jne endHook", 
+                    "cmp ebx, 299",
+                    "jne endHook",
+                    "mov ebx, 283",
+                    "label endHook"
+                };
+
+                _renderButtonPromptHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
         }
 
         private void LogInheritance(nuint skillsListAddr, Persona* personaPtr)
@@ -372,6 +431,7 @@ namespace p3ppc.manualSkillInheritance
             else
             {
                 _state = InheritanceState.ChoosingSkills;
+                *_inInheritanceMenu = true;
             }
         }
 
@@ -387,6 +447,7 @@ namespace p3ppc.manualSkillInheritance
             {
                 RemoveLastInheritedSkill(_currentPersona, persona, _removedNextSkills);
                 _state = InheritanceState.ChoosingSkills;
+                *_inInheritanceMenu = true;
                 return InheritanceState.ChoosingSkills;
             }
 
@@ -396,6 +457,7 @@ namespace p3ppc.manualSkillInheritance
                 {
                     Utils.LogError($"No inheritance skills found for {persona->Id}, leaving menu");
                     _state = InheritanceState.NotInMenu;
+                    *_inInheritanceMenu = false;
                     return InheritanceState.DoneChoosingSkills;
                 }
                 _currentSkills = skills;
@@ -412,6 +474,35 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogDebug($"Done with choose skills message");
                 _ui.AfterQueuedMessage(info->SelectionContextId, 1);
                 _state = InheritanceState.ChoosingSkills;
+                *_inInheritanceMenu = true;
+            }
+
+            if (_inputs->Pressed.HasFlag(InputFlag.SubMenu))
+            {
+                if (_state == InheritanceState.MenuHidden)
+                {
+                    _state = InheritanceState.ChoosingSkills;
+                    _ui.PlaySoundEffect(SoundEffect.MenuClosed);
+                }
+                else
+                {
+                    _state = InheritanceState.MenuHidden;
+                    _ui.PlaySoundEffect(SoundEffect.MenuOpened);
+                    return InheritanceState.ChoosingSkills;
+                }
+            }
+            else if (_state == InheritanceState.MenuHidden)
+            {
+                if (_inputs->Pressed.HasFlag(InputFlag.Confirm) || _inputs->Pressed.HasFlag(InputFlag.Escape))
+                {
+                    _ui.PlaySoundEffect(SoundEffect.MenuClosed);
+                    _state = InheritanceState.ChoosingSkills;
+                    return InheritanceState.ChoosingSkills;
+                }
+                else
+                {
+                    return InheritanceState.ChoosingSkills;
+                }
             }
 
             if (IsHeld(Input.Up, movementDelay, movementInitialDelay) && _currentSkills.Count > 1)
@@ -501,6 +592,7 @@ namespace p3ppc.manualSkillInheritance
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
                         _state = InheritanceState.NotInMenu;
+                        *_inInheritanceMenu = false;
                         return InheritanceState.DoneChoosingSkills;
                     }
                 }
@@ -537,6 +629,7 @@ namespace p3ppc.manualSkillInheritance
                     _state = InheritanceState.NotInMenu;
                     _currentPersona = null;
                     _input->Pressed &= ~InputFlag.Escape; // Absorb the escape so the whole results menu doesn't close
+                    *_inInheritanceMenu = false;
                     return InheritanceState.NotInMenu;
                 }
             }
@@ -681,7 +774,7 @@ namespace p3ppc.manualSkillInheritance
                 if (_inheritanceSpr->LoadStatus != FileLoadStatus.Done)
                     return;
                 Colours.Colour textColour;
-                switch(textInfo->TextType)
+                switch (textInfo->TextType)
                 {
                     case SkillTextType.Normal:
                         textColour = Colours.SkillFg;
@@ -698,9 +791,19 @@ namespace p3ppc.manualSkillInheritance
                 }
                 for (int i = 0; i < 5; i++)
                 {
-                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X -39.25f + (17.1f * i), position.Y + 8.3f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
+                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X - 39.25f + (17.1f * i), position.Y + 8.3f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
                 }
             }
+        }
+
+        
+        private void RenderPromptText()
+        {
+            // Wait for something else to load it
+            if (_inheritanceSpr == (GameFile*)0 || _inheritanceSpr->LoadStatus != FileLoadStatus.Done)
+                return;
+            var sprIndex = _state == InheritanceState.MenuHidden ? 5 : 4;
+            _ui.RenderSprTexture(_inheritanceSpr, sprIndex, 304, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
         }
 
         private enum InheritanceState
@@ -709,7 +812,11 @@ namespace p3ppc.manualSkillInheritance
             ChooseSkillsMessage,
             ChoosingSkills,
             DoneChoosingSkills,
+            MenuHidden,
         }
+
+        [Function(CallingConventions.Microsoft)]
+        private delegate void RenderPromptTextDelegate();
 
         [Function(CallingConventions.Microsoft)]
         private delegate void RenderSkillNameDelegate(Position position, long param_2, byte alpha, SkillTextDisplayInfo* textInfo, long param_5, float param_6);

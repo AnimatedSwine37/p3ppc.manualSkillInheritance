@@ -298,7 +298,9 @@ namespace p3ppc.manualSkillInheritance.UI
             Back,
             Error,
             SelectionMoved,
-            SelectionJumped
+            SelectionJumped,
+            MenuOpened,
+            MenuClosed,
         }
 
         private readonly Dictionary<SoundEffect, short[]> _soundEffectParams = new Dictionary<SoundEffect, short[]>
@@ -307,7 +309,9 @@ namespace p3ppc.manualSkillInheritance.UI
             { SoundEffect.Back, new short[] { 0, 0, 0, 2} },
             { SoundEffect.Error, new short[] { 0, 0, 0, 8} },
             { SoundEffect.SelectionMoved, new short[] { 0, 1, 0, 0 } },
-            { SoundEffect.SelectionJumped, new short[] { 0, 1, 0, 5} }
+            { SoundEffect.SelectionJumped, new short[] { 0, 1, 0, 5} },
+            { SoundEffect.MenuOpened, new short[] { 0, 1, 0, 3} },
+            { SoundEffect.MenuClosed, new short[] { 0, 1, 0, 4} },
 
         };
 

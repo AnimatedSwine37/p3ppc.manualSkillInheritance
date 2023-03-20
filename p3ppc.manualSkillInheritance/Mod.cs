@@ -791,7 +791,7 @@ namespace p3ppc.manualSkillInheritance
                 }
                 for (int i = 0; i < 5; i++)
                 {
-                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X - 39.25f + (17.1f * i), position.Y + 8.3f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
+                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X - 39.25f + (17.1f * i), position.Y + 7.5f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
                 }
             }
         }

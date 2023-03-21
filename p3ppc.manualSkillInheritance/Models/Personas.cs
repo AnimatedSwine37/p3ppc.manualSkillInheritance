@@ -153,6 +153,22 @@ namespace p3ppc.manualSkillInheritance.Models
             return Skill.None;
         }
 
+        /// <summary>
+        /// Returns the first index of a skill or -1 if the Persona doesn't have it
+        /// </summary>
+        /// <param name="persona">The persona to check</param>
+        /// <param name="skill">The skill to find</param>
+        /// <returns>The 0 based index of the first instance of the skill or -1 if it wasn't found</returns>
+        internal static int FirstIndexOfSkill(PersonaDisplayInfo* persona, Skill skill)
+        {
+            for(int i = 0; i < 8; i++)
+            {
+                if ((&persona->SkillsInfo.Skills)[i].Id == (short)skill)
+                    return i;
+            }
+            return -1;
+        }
+
         [StructLayout(LayoutKind.Explicit)]
         internal struct Persona
         {

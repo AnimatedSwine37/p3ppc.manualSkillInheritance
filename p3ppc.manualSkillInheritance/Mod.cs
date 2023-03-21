@@ -362,7 +362,7 @@ namespace p3ppc.manualSkillInheritance
                     "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
                     // Skip over the normal text rendering
                     $"mov esi, dword [rsp + 0xd8]",
-                    $"{_hooks.Utilities.GetAbsoluteJumpMnemonics(Utils.BaseAddress + result.Offset + 12, true)}", 
+                    $"{_hooks.Utilities.GetAbsoluteJumpMnemonics(Utils.BaseAddress + result.Offset + 12, true)}",
                     "label endHook"
                 };
 
@@ -382,7 +382,7 @@ namespace p3ppc.manualSkillInheritance
                 {
                     "use64",
                     $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
-                    "jne endHook", 
+                    "jne endHook",
                     "cmp ebx, 299",
                     "jne endHook",
                     "mov ebx, 283",
@@ -742,6 +742,15 @@ namespace p3ppc.manualSkillInheritance
                     pos.Y += 17;
                 }
             }
+
+            // Render the box around the next skill selected
+            int nextSkillIndex = FirstIndexOfSkill(&info->Persona, Skill.None);
+            if(nextSkillIndex != -1)
+            {
+                float xPos = nextSkillIndex < 4 ? 20.25f : 169.25f;
+                float yPos = 132 + (nextSkillIndex % 4) * 17;
+                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, 255, 255, 255, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            }
         }
 
         private void ResultsMenuOpening()
@@ -760,7 +769,16 @@ namespace p3ppc.manualSkillInheritance
             {
                 _renderSkillName.OriginalFunction(position, param_2, alpha, textInfo, param_5, param_6);
             }
-            else if (!_configuration.EmptySkillsUseText)
+            if (textInfo->Skill != Skill.None )
+                return;
+
+            // Render rectangle around all empty skills (done only to next when selecting skills)
+            if (_state != InheritanceState.ChoosingSkills && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
+            {
+                _ui.RenderSprTexture(_inheritanceSpr, 6, position.X - 72.75f, position.Y - 50.5f, 0, 255, 255, 255, alpha, 0x1000, 0x1000, 0, 0, 0);
+            }
+
+            if (!_configuration.EmptySkillsUseText)
             {
                 if (_inheritanceSpr == (GameFile*)0)
                 {
@@ -796,7 +814,7 @@ namespace p3ppc.manualSkillInheritance
             }
         }
 
-        
+
         private void RenderPromptText()
         {
             // Wait for something else to load it

@@ -759,7 +759,6 @@ namespace p3ppc.manualSkillInheritance
                 float xPos = nextSkillIndex < 4 ? 20.25f : 169.25f;
                 float yPos = 132 + (nextSkillIndex % 4) * 17;
                 var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, false);
-                Utils.LogDebug($"Alpha is {outlineColour.A}");
                 _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
             }
         }

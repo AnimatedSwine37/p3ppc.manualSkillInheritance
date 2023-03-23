@@ -27,8 +27,8 @@ namespace p3ppc.manualSkillInheritance.Configuration
 
         [DisplayName("Outline Flash Speed")]
         [Description("How fast the outline around the next skill to select flashes.")]
-        [DefaultValue(3)]
-        public int OutlineAlphaChangeMultipler { get; set; } = 3;
+        [DefaultValue(2)]
+        public int OutlineAlphaChangeMultipler { get; set; } = 2;
 
         [DisplayName("Outline Flash Minimum Alpha")]
         [Description("How low the alpha (transparency) gets when the outline for the next skill flashes." +

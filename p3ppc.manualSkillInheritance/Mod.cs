@@ -845,14 +845,17 @@ namespace p3ppc.manualSkillInheritance
             {
                 var colour = Colours.Outline;
                 // Calculate the alpha based on the slot the skill is in to get a cool pattern
-                if (alphaBasedOnSlot)
-                {
-                    int index = (int)(position.Y - 132) / 17;
-                    if (position.X >= 169.25)
-                        index = 4 - index; // make it so the pattern is reversed between the two sides
-
-                    colour.A = (byte)((255 - _configuration.MinOutlineAlpha) / 4 * index); // Evenly split up the slots between the max and min alpha
-                }
+                // TODO fix this so it actually makes the wave pattern like in p4g
+                //if (alphaBasedOnSlot)
+                //{
+                //    int index = (int)(position.Y - 132) / 17;
+                //    if (position.X >= 169.25)
+                //        index = 3 - index; // make it so the pattern is reversed between the two sides
+                    
+                //    //colour.A = (byte)((255 - _configuration.MinOutlineAlpha) / 4 * index); // Evenly split up the slots between the max and min alpha
+                //    colour.A = (byte)(255 - 25 * index); // Evenly split up the slots between the max and min alpha
+                //    Utils.LogDebug($"Starting alpha for item at y index {index} and x pos {position.X} at {colour.A}");
+                //}
                 colourPair = new ColourIncreasePair(colour);
                 _outlineColours.Add(position, colourPair);
                 return colour;

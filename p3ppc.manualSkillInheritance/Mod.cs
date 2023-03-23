@@ -17,6 +17,7 @@ using p3ppc.manualSkillInheritance.Models;
 using p3ppc.manualSkillInheritance.UI;
 using static p3ppc.manualSkillInheritance.UI.UIUtils;
 using static p3ppc.manualSkillInheritance.Models.FileUtils;
+using static p3ppc.manualSkillInheritance.UI.Colours;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -95,6 +96,8 @@ namespace p3ppc.manualSkillInheritance
 
         private TimeSpan movementDelay = TimeSpan.FromMilliseconds(100);
         private TimeSpan movementInitialDelay = TimeSpan.FromMilliseconds(230);
+
+        private Dictionary<Position, ColourIncreasePair> _outlineColours = new();
 
         public Mod(ModContext context)
         {
@@ -418,6 +421,7 @@ namespace p3ppc.manualSkillInheritance
         private void StartChooseInheritance(FusionMenuInfo* info)
         {
             Utils.LogDebug($"Opening choose inheritance menu for {info->ResultPersona->Persona.Id}");
+            _outlineColours.Clear();
             _currentPersona = null;
             _currentSkills = null;
             _selectedSkillIndex = 0;
@@ -445,6 +449,7 @@ namespace p3ppc.manualSkillInheritance
             // Back in the menu after selecting no to the confirmation
             if (_state == InheritanceState.NotInMenu && _currentPersona != null)
             {
+                _outlineColours.Clear();
                 RemoveLastInheritedSkill(_currentPersona, persona, _removedNextSkills);
                 _state = InheritanceState.ChoosingSkills;
                 *_inInheritanceMenu = true;
@@ -472,6 +477,7 @@ namespace p3ppc.manualSkillInheritance
                 if (_ui.GetMessageState(info->SelectionContextId) != 0)
                     return InheritanceState.ChoosingSkills;
                 Utils.LogDebug($"Done with choose skills message");
+                _outlineColours.Clear();
                 _ui.AfterQueuedMessage(info->SelectionContextId, 1);
                 _state = InheritanceState.ChoosingSkills;
                 *_inInheritanceMenu = true;
@@ -587,7 +593,8 @@ namespace p3ppc.manualSkillInheritance
                 if (newSkillIndex != -1)
                 {
                     _ui.PlaySoundEffect(SoundEffect.Confirm);
-
+                    _outlineColours.Clear();
+                    
                     if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << newSkillIndex + 1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
@@ -608,6 +615,7 @@ namespace p3ppc.manualSkillInheritance
                 var removedSkill = RemoveLastInheritedSkill(_currentPersona, persona, _removedNextSkills);
                 if (removedSkill != Skill.None)
                 {
+                    _outlineColours.Clear();
                     // Move the cursor back to the skill that was just removed
                     var displayIndex = _currentSkills.IndexOf(removedSkill);
                     if (displayIndex != -1)
@@ -626,6 +634,7 @@ namespace p3ppc.manualSkillInheritance
                 else
                 {
                     Utils.LogDebug("Cancelling inheritance choice");
+                    _outlineColours.Clear();
                     _state = InheritanceState.NotInMenu;
                     _currentPersona = null;
                     _input->Pressed &= ~InputFlag.Escape; // Absorb the escape so the whole results menu doesn't close
@@ -717,7 +726,7 @@ namespace p3ppc.manualSkillInheritance
                     if (i >= _currentSkills.Count || i < 0) break;
                     persona.SkillsInfo.Skills.Id = (short)_currentSkills[i];
                     persona.SelectedSlot = -1;
-                    // Different colour for the selected skill
+                    // Different colourPair for the selected skill
                     if (i == _selectedSkillIndex)
                     {
                         persona.SkillsInfo.NextSkills.BgColour = Colours.SelectedBg;
@@ -726,7 +735,7 @@ namespace p3ppc.manualSkillInheritance
                             persona.SkillsInfo.NextSkills.FgColour = Colours.AlreadyChosenSelectedFg;
                         persona.SkillsInfo.NumNextSkills = -1;
                     }
-                    // Different colour for skills that have already been selected
+                    // Different colourPair for skills that have already been selected
                     else if (HasSkill(_currentPersona, _currentSkills[i]))
                     {
                         persona.SkillsInfo.NextSkills.BgColour = Colours.AlreadyChosenBg;
@@ -745,11 +754,13 @@ namespace p3ppc.manualSkillInheritance
 
             // Render the box around the next skill selected
             int nextSkillIndex = FirstIndexOfSkill(&info->Persona, Skill.None);
-            if(nextSkillIndex != -1)
+            if (nextSkillIndex != -1)
             {
                 float xPos = nextSkillIndex < 4 ? 20.25f : 169.25f;
                 float yPos = 132 + (nextSkillIndex % 4) * 17;
-                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, 255, 255, 255, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+                var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, false);
+                Utils.LogDebug($"Alpha is {outlineColour.A}");
+                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
             }
         }
 
@@ -760,6 +771,7 @@ namespace p3ppc.manualSkillInheritance
             _currentSkills = null;
             _removedNextSkills.Clear();
             _inheritanceSpr = (GameFile*)0;
+            _outlineColours.Clear();
             _state = InheritanceState.NotInMenu;
         }
 
@@ -769,13 +781,16 @@ namespace p3ppc.manualSkillInheritance
             {
                 _renderSkillName.OriginalFunction(position, param_2, alpha, textInfo, param_5, param_6);
             }
-            if (textInfo->Skill != Skill.None )
+            if (textInfo->Skill != Skill.None)
                 return;
 
             // Render rectangle around all empty skills (done only to next when selecting skills)
             if (_state != InheritanceState.ChoosingSkills && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
             {
-                _ui.RenderSprTexture(_inheritanceSpr, 6, position.X - 72.75f, position.Y - 50.5f, 0, 255, 255, 255, alpha, 0x1000, 0x1000, 0, 0, 0);
+                var xPos = position.X - 72.75f;
+                var yPos = position.Y - 50.5f;
+                var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, true);
+                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, alpha < 255 ? alpha : outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
             }
 
             if (!_configuration.EmptySkillsUseText)
@@ -822,6 +837,50 @@ namespace p3ppc.manualSkillInheritance
                 return;
             var sprIndex = _state == InheritanceState.MenuHidden ? 5 : 4;
             _ui.RenderSprTexture(_inheritanceSpr, sprIndex, 304, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
+        }
+
+        private Colour GetOutlineColour(Position position, bool alphaBasedOnSlot)
+        {
+            if (!_outlineColours.TryGetValue(position, out var colourPair))
+            {
+                var colour = Colours.Outline;
+                // Calculate the alpha based on the slot the skill is in to get a cool pattern
+                if (alphaBasedOnSlot)
+                {
+                    int index = (int)(position.Y - 132) / 17;
+                    if (position.X >= 169.25)
+                        index = 4 - index; // make it so the pattern is reversed between the two sides
+
+                    colour.A = (byte)((255 - _configuration.MinOutlineAlpha) / 4 * index); // Evenly split up the slots between the max and min alpha
+                }
+                colourPair = new ColourIncreasePair(colour);
+                _outlineColours.Add(position, colourPair);
+                return colour;
+            }
+            else
+            {
+                var colour = colourPair.Colour;
+                _outlineColours[position].Colour.A = (byte)(colourPair.Colour.A + (colourPair.Increase* _configuration.OutlineAlphaChangeMultipler));
+                // Go back down after reaching max alpha
+                if (colourPair.Increase > 0 && colourPair.Colour.A >= 255-_configuration.OutlineAlphaChangeMultipler+1)
+                    _outlineColours[position].Increase = -1;
+                // Go back up after eaching the minimum alpha
+                else if (colourPair.Increase < 0 && colourPair.Colour.A <= _configuration.MinOutlineAlpha)
+                    _outlineColours[position].Increase = 1;
+                return colour;
+            }
+        }
+
+        private class ColourIncreasePair
+        {
+            internal Colour Colour;
+            internal int Increase;
+
+            internal ColourIncreasePair(Colour colour, int increase = -1)
+            {
+                Colour = colour;
+                Increase = increase;
+            }
         }
 
         private enum InheritanceState

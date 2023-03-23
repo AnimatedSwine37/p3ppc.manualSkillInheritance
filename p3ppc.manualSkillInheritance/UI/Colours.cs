@@ -32,6 +32,7 @@ namespace p3ppc.manualSkillInheritance.UI
         internal static Colour AlreadyChosenSelectedFg => *_isFemc ? FemaleColours.AlreadyChosenSelectedFg : MaleColours.AlreadyChosenSelectedFg;
         internal static Colour SkillFg => *_isFemc ? FemaleColours.SkillFg : MaleColours.SkillFg;
         internal static Colour SkillBg => *_isFemc ? FemaleColours.SkillBg : MaleColours.SkillBg;
+        internal static Colour Outline = new Colour { R = 192, G = 255, B = 40, A = 255 };
 
     }
 

@@ -25,6 +25,18 @@ namespace p3ppc.manualSkillInheritance.Configuration
             The `DefaultValue` attribute is used as part of the `Reset` button in Reloaded-Launcher.
         */
 
+        [DisplayName("Outline Flash Speed")]
+        [Description("How fast the outline around the next skill to select flashes.")]
+        [DefaultValue(3)]
+        public int OutlineAlphaChangeMultipler { get; set; } = 3;
+
+        [DisplayName("Outline Flash Minimum Alpha")]
+        [Description("How low the alpha (transparency) gets when the outline for the next skill flashes." +
+            "\nHigher means the flash will transition at a brighter colour, lower means a darker colour." +
+            "\nMax of 255 (would be no flash)")]
+        [DefaultValue((byte)80)]
+        public byte MinOutlineAlpha { get; set; } = 80;
+
         [DisplayName("Use Text For Empty Skills")]
         [Description("If enabled text will be used for empty skills which gives the appearance of much thinner dashes.\nIf disabled empty skills will be indicated by thick dashes.")]
         [DefaultValue(false)]

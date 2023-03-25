@@ -18,6 +18,7 @@ using p3ppc.manualSkillInheritance.UI;
 using static p3ppc.manualSkillInheritance.UI.UIUtils;
 using static p3ppc.manualSkillInheritance.Models.FileUtils;
 using static p3ppc.manualSkillInheritance.UI.Colours;
+using static p3ppc.manualSkillInheritance.UI.Sprites;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -693,23 +694,27 @@ namespace p3ppc.manualSkillInheritance
             _ui.RenderSprTexture(baseSpr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             // Choose a skill text
             var textColour = Colours.SkillBg;
-            _ui.RenderSprTexture(_inheritanceSpr, 0, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
-
+            if(_configuration.AlternateChooseSkills) 
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ChooseSkills2, 264, 86, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+            else
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ChooseSkills, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
             // Render skill help
             if (_ui.RenderSkillHelp != null)
                 _ui.RenderSkillHelp(new Position { X = 252, Y = 132 }, 0, 0xFF, _selectedSkill);
 
+            _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.Divider, 259, 78.65f, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+
             if (_currentSkills != null && _currentSkills.Count > 5)
             {
                 // Render scroll bar bg
-                _ui.RenderSprTexture(_inheritanceSpr, 1, 251, 82.6f, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ScrollBg, 251, 82.6f, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
 
                 float incrementSize = (138.6f - 83) / (_currentSkills.Count - 5);
                 int startIndex = _selectedSkillIndex - _selectedSkillDisplayIndex;
 
                 // Render scroll bar slider (up to 138.6 y)
-                _ui.RenderSprTexture(_inheritanceSpr, 2, 251.28f, 83 + (incrementSize * startIndex), 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ScrollSlider, 251.28f, 83 + (incrementSize * startIndex), 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             }
 
             // Render skill buttons
@@ -757,9 +762,9 @@ namespace p3ppc.manualSkillInheritance
             if (nextSkillIndex != -1)
             {
                 float xPos = nextSkillIndex < 4 ? 20.25f : 169.25f;
-                float yPos = 132 + (nextSkillIndex % 4) * 17;
+                float yPos = 183 + (nextSkillIndex % 4) * 17;
                 var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, false);
-                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.SkillRectangle, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
             }
         }
 
@@ -787,9 +792,9 @@ namespace p3ppc.manualSkillInheritance
             if (_state != InheritanceState.ChoosingSkills && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
             {
                 var xPos = position.X - 72.75f;
-                var yPos = position.Y - 50.5f;
+                var yPos = position.Y + 0.5f;
                 var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, true);
-                _ui.RenderSprTexture(_inheritanceSpr, 6, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, alpha < 255 ? alpha : outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
+                _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.SkillRectangle, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, alpha < 255 ? alpha : outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
             }
 
             if (!_configuration.EmptySkillsUseText)
@@ -823,7 +828,7 @@ namespace p3ppc.manualSkillInheritance
                 }
                 for (int i = 0; i < 5; i++)
                 {
-                    _ui.RenderSprTexture(_inheritanceSpr, 3, position.X - 39.25f + (17.1f * i), position.Y + 7.5f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
+                    _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.BlankDash, position.X - 39.25f + (17.1f * i), position.Y + 7.5f, 0, textColour.R, textColour.G, textColour.B, alpha, 0x1000, 0x1000, 0, 0, 0);
                 }
             }
         }
@@ -834,7 +839,7 @@ namespace p3ppc.manualSkillInheritance
             // Wait for something else to load it
             if (_inheritanceSpr == (GameFile*)0 || _inheritanceSpr->LoadStatus != FileLoadStatus.Done)
                 return;
-            var sprIndex = _state == InheritanceState.MenuHidden ? 5 : 4;
+            var sprIndex = _state == InheritanceState.MenuHidden ? (int)InheritanceSprite.DisplayOn : (int)InheritanceSprite.DisplayOff;
             _ui.RenderSprTexture(_inheritanceSpr, sprIndex, 304, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
         }
 

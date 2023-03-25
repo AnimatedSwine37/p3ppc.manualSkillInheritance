@@ -47,6 +47,11 @@ namespace p3ppc.manualSkillInheritance.Configuration
         [DefaultValue("-------")]
         public string EmptySkillName { get; set; } = "-------";
 
+        [DisplayName("Alternate Choose Skills Text")]
+        [Description("Use an alternate thinner style for the \"Choose which skills to inherit\" text")]
+        [DefaultValue(false)]
+        public bool AlternateChooseSkills { get; set; } = false;
+
         [DisplayName("Debug Mode")]
         [Description("Logs additional information to the console that is useful for debugging.")]
         [DefaultValue(false)]

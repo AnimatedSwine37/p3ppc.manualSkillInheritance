@@ -595,7 +595,7 @@ namespace p3ppc.manualSkillInheritance
                 {
                     _ui.PlaySoundEffect(SoundEffect.Confirm);
                     _outlineColours.Clear();
-                    
+
                     if ((_currentPersona->SkillsInfo.NewSkillsMask & (1 << newSkillIndex + 1)) == 0)
                     {
                         Utils.LogDebug($"Done selecting skills for {persona->Id}");
@@ -655,6 +655,19 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogDebug($"Current persona is at 0x{(nuint)_currentPersona:X}");
             }
 
+            // Render the box around the next skill selected when the menu is hidden
+            if (_state == InheritanceState.MenuHidden && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
+            {
+                int nextSkillIndexx = FirstIndexOfSkill(&info->Persona, Skill.None);
+                if (nextSkillIndexx != -1)
+                {
+                    float xPos = nextSkillIndexx < 4 ? 20.25f : 169.25f;
+                    float yPos = 183 + (nextSkillIndexx % 4) * 17;
+                    var outlineColour = GetOutlineColour(new Position { X = xPos, Y = yPos }, false);
+                    _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.SkillRectangle, xPos, yPos, 0, outlineColour.R, outlineColour.G, outlineColour.B, outlineColour.A, 0x1000, 0x1000, 0, 0, 0);
+                }
+            }
+
             if (_state != InheritanceState.ChoosingSkills)
                 return;
 
@@ -694,7 +707,7 @@ namespace p3ppc.manualSkillInheritance
             _ui.RenderSprTexture(baseSpr, 0x1b4, 97, 118, 0, bgColour.R, bgColour.G, bgColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             // Choose a skill text
             var textColour = Colours.SkillBg;
-            if(_configuration.AlternateChooseSkills) 
+            if(_configuration.AlternateChooseSkills)
                 _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ChooseSkills2, 264, 86, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
             else
                 _ui.RenderSprTexture(_inheritanceSpr, (int)InheritanceSprite.ChooseSkills, 259, 81, 0, textColour.R, textColour.G, textColour.B, 0xFF, 0x1000, 0x1000, 0, 0, 0);
@@ -789,7 +802,7 @@ namespace p3ppc.manualSkillInheritance
                 return;
 
             // Render rectangle around all empty skills (done only to next when selecting skills)
-            if (_state != InheritanceState.ChoosingSkills && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
+            if (_state != InheritanceState.ChoosingSkills && _state != InheritanceState.MenuHidden && _inheritanceSpr != (GameFile*)0 && _inheritanceSpr->LoadStatus == FileLoadStatus.Done)
             {
                 var xPos = position.X - 72.75f;
                 var yPos = position.Y + 0.5f;
@@ -855,7 +868,7 @@ namespace p3ppc.manualSkillInheritance
                 //    int index = (int)(position.Y - 132) / 17;
                 //    if (position.X >= 169.25)
                 //        index = 3 - index; // make it so the pattern is reversed between the two sides
-                    
+
                 //    //colour.A = (byte)((255 - _configuration.MinOutlineAlpha) / 4 * index); // Evenly split up the slots between the max and min alpha
                 //    colour.A = (byte)(255 - 25 * index); // Evenly split up the slots between the max and min alpha
                 //    Utils.LogDebug($"Starting alpha for item at y index {index} and x pos {position.X} at {colour.A}");

@@ -70,6 +70,7 @@ namespace p3ppc.manualSkillInheritance
         private IAsmHook _addInheritedSkillsHook;
         private IAsmHook _skillHelpDescriptionHook;
         private IAsmHook _resultsMenuOpeningHook;
+        private IAsmHook _specialResultsMenuOpeningHook;
         private IReverseWrapper<LogInheritanceDelegate> _logInheritanceReverseWrapper;
         private IReverseWrapper<StartChooseInheritanceDelegate> _startChooseInheritanceReverseWrapper;
         private IReverseWrapper<ChooseInheritanceDelegate> _chooseInheritanceReverseWrapper;
@@ -280,6 +281,8 @@ namespace p3ppc.manualSkillInheritance
                 _memory.Write(result.Offset + Utils.BaseAddress + 9, (byte)0x8E); // Change the jz to jle so it doesn't write descriptions for -1 skills
             });
 
+            string resultsMenuOpening = _hooks.Utilities.GetAbsoluteCallMnemonics(ResultsMenuOpening, out _resultsMenuOpeningReverseWrapper);
+
             startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? E9 ?? ?? ?? ?? 8D 43 ??", result =>
             {
                 if (!result.Found)
@@ -294,11 +297,32 @@ namespace p3ppc.manualSkillInheritance
                     "use64",
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
                     "sub rsp, 40",
-                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(ResultsMenuOpening, out _resultsMenuOpeningReverseWrapper)}",
+                    $"{resultsMenuOpening}",
                     "add rsp, 40",
                     "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
                 };
                 _resultsMenuOpeningHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 8B 7C 24 ?? 48 8B B4 24 ?? ?? ?? ?? EB ??", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find OpenSpecialFusionResults, stuff won't work :(");
+                    return;
+                }
+                Utils.LogDebug($"Found OpenSpecialFusionResults at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
+                    "sub rsp, 40",
+                    $"{resultsMenuOpening}",
+                    "add rsp, 40",
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
+                };
+                _specialResultsMenuOpeningHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
             });
 
             startupScanner.AddMainModuleScan("4E 8B 84 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 0F", result =>

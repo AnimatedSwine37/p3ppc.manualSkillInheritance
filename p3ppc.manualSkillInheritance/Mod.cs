@@ -19,6 +19,7 @@ using static p3ppc.manualSkillInheritance.UI.UIUtils;
 using static p3ppc.manualSkillInheritance.Models.FileUtils;
 using static p3ppc.manualSkillInheritance.UI.Colours;
 using static p3ppc.manualSkillInheritance.UI.Sprites;
+using CriFs.V2.Hook.Interfaces;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -120,6 +121,15 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogError($"Unable to get controller for Reloaded SigScan Library, stuff won't work :(");
                 return;
             }
+
+            var criFsController = _modLoader.GetController<ICriFsRedirectorApi>();
+            if (criFsController == null || !criFsController.TryGetTarget(out var criFsApi))
+            {
+                Utils.LogError($"Unable to get controller for CriFs Lib, things will not work :(");
+                return;
+            }
+
+            criFsApi.AddProbingPath($"Files{Path.DirectorySeparatorChar}{_configuration.TextLanguage}");
 
             _ui = new UIUtils(startupScanner, _hooks, _configuration);
             _files = new FileUtils(_hooks, startupScanner);

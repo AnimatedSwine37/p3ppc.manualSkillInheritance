@@ -25,6 +25,11 @@ namespace p3ppc.manualSkillInheritance.Configuration
             The `DefaultValue` attribute is used as part of the `Reset` button in Reloaded-Launcher.
         */
 
+        [DisplayName("Language")]
+        [Description("The language the mod is in.")]
+        [DefaultValue(Language.English)]
+        public Language TextLanguage { get; set; } = Language.English;
+
         [DisplayName("Outline Flash Speed")]
         [Description("How fast the outline around the next skill to select flashes.")]
         [DefaultValue(2)]
@@ -56,6 +61,12 @@ namespace p3ppc.manualSkillInheritance.Configuration
         [Description("Logs additional information to the console that is useful for debugging.")]
         [DefaultValue(false)]
         public bool DebugEnabled { get; set; } = false;
+
+        public enum Language
+        {
+            English,
+            Traditional_Chinese
+        };
     }
 
     /// <summary>

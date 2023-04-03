@@ -38,10 +38,10 @@
     <Content Include="ModConfig.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Update="P5REssentials\CPK\umd0\facility\combine.bin">
+    <None Update="Files\English\umd0\facility\combine.bin">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="P5REssentials\CPK\umd0\facility\combine\inheritance.spr">
+    <None Update="Files\English\umd0\facility\combine\inheritance.spr">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Preview.png">
@@ -54,6 +54,14 @@
     <PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
     <PackageReference Include="Reloaded.Mod.Interfaces" Version="2.3.0" ExcludeAssets="runtime" />
     <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Submodules\CriFs.V2.Hook.ReloadedII\Interfaces\CriFs.V2.Hook.Interfaces\CriFs.V2.Hook.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Files\Traditional_Chinese\" />
   </ItemGroup>
 
 </Project>

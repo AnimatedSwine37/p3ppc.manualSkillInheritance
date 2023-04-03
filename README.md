@@ -8,8 +8,10 @@ This mod is only tested with the Steam version of P3P and will very likely not w
 ### Other Mods
 This mod will be incompatible with any others that edit facility\combine.bin (anything that edits the messages or textures in the velvet room) and must be placed below such mods otherwise the game will softlock when opening the skill inheritance menu. I am unaware of any mods that actually edit this file however so you should be fine, if you do know of any please let me know.
 
-### Non-English Languages
-The mod will work with non-English languages however the text and sprites in the velvet room will become English as I have edited facility\combine.bin. If anyone wants to translate the mod to another language then feel free to get in contact with me, I'd be happy to add options for other languages if someone else makes the necessary files.
+### Other Languages
+The mod currently properly supports English and Traditional Chinese (changeable in the mod's configuration) however any language will technically work. For unsupported languages the text and sprites in the velvet room will become English as I have edited facility\combine.bin. 
+
+If you want to translate the mod to another language then there's some information on how to do so [here](TRANSLATING.md) and you can always dm me if that isn't enough.
 
 ## Configuration Options
 This mod has a number of configurable options in places where there were multiple good options for UI design. All of these can be edited from the Configure Mod button in Reloaded and will apply in real-time (you can change them whilst in-game as long as you press save). For descriptions of all of the options, you can hover over them.

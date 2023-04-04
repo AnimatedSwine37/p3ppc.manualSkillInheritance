@@ -16,6 +16,9 @@ If you aren't interested in doing this yourself that's fine, I can work with jus
 If you want to check that your textures look good in game you can replace the existing ones which are located in [Files\English\umd0\facility\combine\inheritance.spr](p3ppc.manualSkillInheritance/Files/English/umd0/facility/combine) using [Amicitia](https://github.com/tge-was-taken/Amicitia/releases/latest).
 When doing so you will need to use [Tmx Converter](https://github.com/LTSophia/TMXConverter/releases/latest) to first convert your png to a tmx file.
 
+Note that if you need to reposition the sprites for some reason you will need to divide the coordinates you get in your image editing software by 4 to get what needs to be entered into the sprite. e.g. if the texture starts at (100, 84) you'd have to enter (25, 21) as the position in the spr file. 
+If you have trouble with this I can work it out myself, just having the image is enough for me.
+
 ## Text
 Igor's message explaining Skill Inheritance in the Velvet Room's Talk menu needs to be altered to not mention skills being randomly assigned when selecting a Persona and the text "Please choose the skills you would like to pass on." needs to be translated (this is a brand new message).
 

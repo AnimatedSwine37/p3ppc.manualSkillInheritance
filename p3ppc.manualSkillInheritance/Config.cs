@@ -65,6 +65,7 @@ namespace p3ppc.manualSkillInheritance.Configuration
         public enum Language
         {
             English,
+            Spanish,
             Traditional_Chinese
         };
     }

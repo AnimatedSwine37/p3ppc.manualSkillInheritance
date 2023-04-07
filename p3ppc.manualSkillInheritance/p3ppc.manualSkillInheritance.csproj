@@ -27,6 +27,8 @@
   <Import Project="Reloaded.Checks.targets" />
 
   <ItemGroup>
+    <None Remove="Files\Spanish\umd0\facility\combine.bin" />
+    <None Remove="Files\Spanish\umd0\facility\combine\inheritance.spr" />
     <None Remove="Files\Traditional_Chinese\umd0\facility\combine.bin" />
     <None Remove="Files\Traditional_Chinese\umd0\facility\combine\inheritance.spr" />
     <None Remove="ModConfig.json" />
@@ -37,6 +39,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Files\Spanish\umd0\facility\combine.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Files\Spanish\umd0\facility\combine\inheritance.spr">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Files\Traditional_Chinese\umd0\facility\combine.bin">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -416,13 +416,17 @@ namespace p3ppc.manualSkillInheritance
                 }
                 Utils.LogDebug($"Found RenderButtonPrompt at 0x{result.Offset + Utils.BaseAddress:X}");
 
+                // Change the positioning of the skill info button prompt (there's definitely a better way to do this lol)
                 string[] function =
                 {
                     "use64",
                     $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
                     "jne endHook",
                     "cmp ebx, 299",
+                    "je change",
+                    "cmp ebx, 298",
                     "jne endHook",
+                    "label change",
                     "mov ebx, 283",
                     "label endHook"
                 };

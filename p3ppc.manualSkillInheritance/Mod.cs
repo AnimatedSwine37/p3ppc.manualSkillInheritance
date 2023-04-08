@@ -424,10 +424,15 @@ namespace p3ppc.manualSkillInheritance
                     "jne endHook",
                     "cmp ebx, 299",
                     "je change",
+                    "cmp ebx, 288",
+                    "je changeSpanish",
                     "cmp ebx, 298",
                     "jne endHook",
                     "label change",
                     "mov ebx, 283",
+                    "jmp endHook",
+                    "label changeSpanish",
+                    "mov ebx, 310", // The text is much smaller in Spanish so move button more to the right
                     "label endHook"
                 };
 
@@ -891,7 +896,8 @@ namespace p3ppc.manualSkillInheritance
             if (_inheritanceSpr == (GameFile*)0 || _inheritanceSpr->LoadStatus != FileLoadStatus.Done)
                 return;
             var sprIndex = _state == InheritanceState.MenuHidden ? (int)InheritanceSprite.DisplayOn : (int)InheritanceSprite.DisplayOff;
-            _ui.RenderSprTexture(_inheritanceSpr, sprIndex, 304, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
+            var xpos = _configuration.TextLanguage == Config.Language.Spanish ? 328 : 304;
+            _ui.RenderSprTexture(_inheritanceSpr, sprIndex, xpos, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
         }
 
         private Colour GetOutlineColour(Position position, bool alphaBasedOnSlot)

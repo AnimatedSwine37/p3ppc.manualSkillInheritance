@@ -2,7 +2,7 @@
   "ModId": "p3ppc.manualSkillInheritance",
   "ModName": "Manual Skill Inheritance",
   "ModAuthor": "AnimatedSwine37",
-  "ModVersion": "1.1.0",
+  "ModVersion": "1.2.0",
   "ModDescription": "Lets you decide which skills your Personas inherit when fusing",
   "ModDll": "p3ppc.manualSkillInheritance.dll",
   "ModIcon": "Preview.png",

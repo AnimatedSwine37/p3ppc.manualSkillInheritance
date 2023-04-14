@@ -66,6 +66,7 @@ namespace p3ppc.manualSkillInheritance.Configuration
         {
             English,
             French,
+            Japanese,
             Spanish,
             Traditional_Chinese
         };

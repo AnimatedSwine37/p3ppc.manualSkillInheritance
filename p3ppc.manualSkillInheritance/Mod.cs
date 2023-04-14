@@ -81,6 +81,8 @@ namespace p3ppc.manualSkillInheritance
         private InputStruct* _input;
         private IAsmHook _fusionResultsInitPersonaHook;
         private IAsmHook _renderButtonPromptTextHook;
+        private IAsmHook _renderButtonPromptTextJapaneseHook;
+        private IAsmHook _renderButtonPromptJapaneseHook;
         private IAsmHook _renderButtonPromptHook;
         private IHook<RenderSkillNameDelegate> _renderSkillName;
 
@@ -377,6 +379,8 @@ namespace p3ppc.manualSkillInheritance
                 _renderSkillName = _hooks.CreateHook<RenderSkillNameDelegate>(RenderSkillName, Utils.BaseAddress + result.Offset).Activate();
             });
 
+            string renderPromptTextCall = _hooks.Utilities.GetAbsoluteCallMnemonics(RenderPromptText, out _renderPromptTextReverseWrapper);
+
             startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 8B B4 24 ?? ?? ?? ?? F3 0F 10 3D ?? ?? ?? ??", result =>
             {
                 if (!result.Found)
@@ -395,7 +399,7 @@ namespace p3ppc.manualSkillInheritance
                     "jne endHook",
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
                     "sub rsp, 40",
-                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(RenderPromptText, out _renderPromptTextReverseWrapper)}",
+                    $"{renderPromptTextCall}",
                     "add rsp, 40",
                     "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
                     // Skip over the normal text rendering
@@ -405,6 +409,33 @@ namespace p3ppc.manualSkillInheritance
                 };
 
                 _renderButtonPromptTextHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("F3 44 0F 11 54 24 ?? E8 ?? ?? ?? ?? F3 0F 10 3D ?? ?? ?? ?? 41 0F 28 D9", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderButtonPromptTextJapanese, correct button prompts won't show :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderButtonPromptTextJapanese at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                string[] function =
+                {
+                    "use64",
+                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    "jne endHook",
+                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
+                    "sub rsp, 40",
+                    $"{renderPromptTextCall}",
+                    "add rsp, 40",
+                    "pop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax",
+                    // Skip over the normal text rendering
+                    $"{_hooks.Utilities.GetAbsoluteJumpMnemonics(Utils.BaseAddress + result.Offset + 12, true)}",
+                    "label endHook"
+                };
+
+                _renderButtonPromptTextJapaneseHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
             });
 
             startupScanner.AddMainModuleScan("66 0F 6E F3 0F 5B F6 0F 28 CE", result =>
@@ -437,6 +468,31 @@ namespace p3ppc.manualSkillInheritance
                 };
 
                 _renderButtonPromptHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
+            });
+
+            startupScanner.AddMainModuleScan("B9 0F 00 00 00 C6 44 24 ?? FF E8 ?? ?? ?? ?? 44 88 74 24 ?? 0F 57 DB C6 44 24 ?? FF 41 0F 28 D1", result =>
+            {
+                if (!result.Found)
+                {
+                    Utils.LogError($"Unable to find RenderButtonPromptJapanese, button prompts will be positioned weirdly :(");
+                    return;
+                }
+                Utils.LogDebug($"Found RenderButtonPromptJapanese at 0x{result.Offset + Utils.BaseAddress:X}");
+
+                float* promptPos = (float*)_memory.Allocate(4);
+                *promptPos = 311;
+
+                // Change the positioning of the skill info button prompt
+                string[] function =
+                {
+                    "use64",
+                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    "jne endHook",
+                    $"movss xmm1, [qword {(nuint)promptPos}]", // Move the skill info button prompt to the right
+                    "label endHook"
+                };
+
+                _renderButtonPromptJapaneseHook = _hooks.CreateAsmHook(function, Utils.BaseAddress + result.Offset, AsmHookBehaviour.ExecuteFirst).Activate();
             });
         }
 
@@ -896,8 +952,15 @@ namespace p3ppc.manualSkillInheritance
             if (_inheritanceSpr == (GameFile*)0 || _inheritanceSpr->LoadStatus != FileLoadStatus.Done)
                 return;
             var sprIndex = _state == InheritanceState.MenuHidden ? (int)InheritanceSprite.DisplayOn : (int)InheritanceSprite.DisplayOff;
-            var xpos = _configuration.TextLanguage == Config.Language.Spanish ? 328 : 304;
-            _ui.RenderSprTexture(_inheritanceSpr, sprIndex, xpos, 256.5f, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
+            var xpos = 304; 
+            var ypos = 256.5f;
+            if (_configuration.TextLanguage == Config.Language.Spanish) xpos = 328;
+            else if (_configuration.TextLanguage == Config.Language.Japanese)
+            {
+                xpos = 310;
+                ypos = 255.5f;
+            }
+            _ui.RenderSprTexture(_inheritanceSpr, sprIndex, xpos, ypos, 0, 255, 255, 255, 255, 0x1000, 0x1000, 0, 0, 0);
         }
 
         private Colour GetOutlineColour(Position position, bool alphaBasedOnSlot)

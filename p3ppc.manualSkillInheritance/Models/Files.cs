@@ -16,16 +16,18 @@ namespace p3ppc.manualSkillInheritance.Models
         
         internal FileUtils(IReloadedHooks hooks, IStartupScanner startupScanner)
         {
-            startupScanner.AddMainModuleScan("40 53 48 83 EC 20 48 89 CB 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 15 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? 83 C2 02 E8 ?? ?? ?? ?? BA 58 03 00 00", result =>
+            startupScanner.AddMainModuleScan("E8 ?? ?? ?? ?? 48 89 43 ?? B8 01 00 00 00 66 89 43 ??", result =>
             {
                 if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find LoadFile, won't be able to replace any bustups :(");
+                    Utils.LogError($"Unable to find LoadSprFile, stuff won't work :(");
                     return;
                 }
-                Utils.LogDebug($"Found LoadFile at 0x{result.Offset + Utils.BaseAddress:X}");
-
-                _loadFile = hooks.CreateWrapper<LoadFileDelegate>(result.Offset + Utils.BaseAddress, out _);
+                Utils.LogDebug($"Found LoadSprFile call at 0x{result.Offset + Utils.BaseAddress:X}");
+                var address = Utils.GetGlobalAddress(result.Offset + Utils.BaseAddress + 1);
+                Utils.LogDebug($"Found LoadSprFile at 0x{address:X}");
+                
+                _loadFile = hooks.CreateWrapper<LoadFileDelegate>((long)address, out _);
             });
         }
 

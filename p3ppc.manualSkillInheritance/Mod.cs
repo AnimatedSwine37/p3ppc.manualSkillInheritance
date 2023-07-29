@@ -96,8 +96,10 @@ namespace p3ppc.manualSkillInheritance
         private List<Skill>? _currentSkills;
         private GameFile* _inheritanceSpr;
         private bool* _inInheritanceMenu;
+        private nint _inInheritanceMenuPtr;
 
-        private nuint _allowFusionConfirmation;
+        private bool* _allowFusionConfirmation;
+        private nint _allowFusionConfirmationPtr;
 
         private TimeSpan movementDelay = TimeSpan.FromMilliseconds(100);
         private TimeSpan movementInitialDelay = TimeSpan.FromMilliseconds(230);
@@ -135,33 +137,39 @@ namespace p3ppc.manualSkillInheritance
 
             _ui = new UIUtils(startupScanner, _hooks, _configuration);
             _files = new FileUtils(_hooks, startupScanner);
+            
+            _allowFusionConfirmation = (bool*)_memory.Allocate(4);
+            _allowFusionConfirmationPtr = _hooks.Utilities.WritePointer((nint)_allowFusionConfirmation);
+            Utils.LogDebug($"Allocated allowFusionConfirmation to 0x{(nint)_allowFusionConfirmation:X}");
+            Utils.LogDebug($"Allocated allowFusionConfirmationPtr to 0x{_allowFusionConfirmationPtr:X}");
 
-            _allowFusionConfirmation = _memory.Allocate(1);
             _inInheritanceMenu = (bool*)_memory.Allocate(4);
-            *_inInheritanceMenu = false;
+            _inInheritanceMenuPtr = _hooks.Utilities.WritePointer((nint)_inInheritanceMenu);
+            Utils.LogDebug($"Allocated inInheritanceMenu to 0x{(nint)_inInheritanceMenu:X}");
+            Utils.LogDebug($"Allocated inInheritanceMenuPtr to 0x{_inInheritanceMenuPtr:X}");
 
             startupScanner.AddMainModuleScan("48 C1 E1 02 E8 ?? ?? ?? ?? 4C 8B E0", result =>
-            {
-                if (!result.Found)
                 {
-                    Utils.LogError($"Unable to find SetInheritance, stuff won't work :(");
-                    return;
-                }
-                Utils.LogDebug($"Found SetInheritance at 0x{result.Offset + Utils.BaseAddress:X}");
+                    if (!result.Found)
+                    {
+                        Utils.LogError($"Unable to find SetInheritance, stuff won't work :(");
+                        return;
+                    }
+                    Utils.LogDebug($"Found SetInheritance at 0x{result.Offset + Utils.BaseAddress:X}");
 
-                string[] function =
-                {
-                    "use64",
-                    "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r11",
-                    "mov rcx, r15",
-                    "mov rdx, r13",
-                    "sub rsp, 32",
-                    $"{_hooks.Utilities.GetAbsoluteCallMnemonics(LogInheritance, out _logInheritanceReverseWrapper)}",
-                    "add rsp, 32",
-                    "pop r11\npop r9\npop r8\npop rdx\npop rcx\npop rax"
-                };
-                _setInheritanceHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
-            });
+                    string[] function =
+                    {
+                        "use64",
+                        "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r11",
+                        "mov rcx, r15",
+                        "mov rdx, r13",
+                        "sub rsp, 32",
+                        $"{_hooks.Utilities.GetAbsoluteCallMnemonics(LogInheritance, out _logInheritanceReverseWrapper)}",
+                        "add rsp, 32",
+                        "pop r11\npop r9\npop r8\npop rdx\npop rcx\npop rax"
+                    };
+                    _setInheritanceHook = _hooks.CreateAsmHook(function, result.Offset + Utils.BaseAddress, AsmHookBehaviour.ExecuteFirst).Activate();
+                });
 
             startupScanner.AddMainModuleScan("48 8B 4F ?? 48 83 C1 04", result =>
             {
@@ -175,7 +183,7 @@ namespace p3ppc.manualSkillInheritance
                 string[] function =
                 {
                     "use64",
-                    $"cmp [qword {_allowFusionConfirmation}], byte 1",
+                    $"{Utils.CmpValue(_allowFusionConfirmationPtr, 1, "byte")}",
                     "je endHook", // Let the confirmation go through as we've already chosen skills
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r11",
                     "mov rcx, rbx",
@@ -220,7 +228,7 @@ namespace p3ppc.manualSkillInheritance
                     $"cmp eax, {(int)InheritanceState.ChooseSkillsMessage}",
                     "je retFunction",
                     //// Go to the fusion confirmation
-                    $"mov [qword {_allowFusionConfirmation}], byte 1", // We want to allow the confirmation
+                    $"{Utils.SetValue(_allowFusionConfirmationPtr, 1, "byte")}", // We want to allow the confirmation
                     "jmp endHook",
                     // Return since we're in the skill selection
                     "label retFunction",
@@ -228,7 +236,7 @@ namespace p3ppc.manualSkillInheritance
                     "ret",
                     // Continue with normal stuff
                     "label continueNormally",
-                    $"mov [qword {_allowFusionConfirmation}], byte 0", // We want to capture confirmation and take it into the skill selection menu
+                    $"{Utils.SetValue(_allowFusionConfirmationPtr, 0, "byte")}", // We want to capture confirmation and take it into the skill selection menu
                     "label endHook",
                     "pop rax",
                 };
@@ -395,7 +403,7 @@ namespace p3ppc.manualSkillInheritance
                     "use64",
                     "cmp dword [rcx+8], 0x10",
                     "jne endHook",
-                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    $"{Utils.CmpValue(_inInheritanceMenuPtr, 1, "byte")}",
                     "jne endHook",
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
                     "sub rsp, 40",
@@ -423,7 +431,7 @@ namespace p3ppc.manualSkillInheritance
                 string[] function =
                 {
                     "use64",
-                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    $"{Utils.CmpValue(_inInheritanceMenuPtr, 1, "byte")}",
                     "jne endHook",
                     "push rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11",
                     "sub rsp, 40",
@@ -451,7 +459,7 @@ namespace p3ppc.manualSkillInheritance
                 string[] function =
                 {
                     "use64",
-                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    $"{Utils.CmpValue(_inInheritanceMenuPtr, 1, "byte")}",
                     "jne endHook",
                     "cmp ebx, 299",
                     "je change",
@@ -480,15 +488,21 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogDebug($"Found RenderButtonPromptJapanese at 0x{result.Offset + Utils.BaseAddress:X}");
 
                 float* promptPos = (float*)_memory.Allocate(4);
+                Utils.LogDebug($"Allocated promptPos to 0x{(nuint)promptPos:X}");
+                nint promptPosPtr = _hooks.Utilities.WritePointer((nint)promptPos);
+                Utils.LogDebug($"Allocated promptPosPtr to 0x{promptPosPtr:X}");
                 *promptPos = 311;
 
                 // Change the positioning of the skill info button prompt
                 string[] function =
                 {
                     "use64",
-                    $"cmp byte [qword {(nuint)_inInheritanceMenu}], 1",
+                    $"{Utils.CmpValue(_inInheritanceMenuPtr, 1, "byte")}",
                     "jne endHook",
-                    $"movss xmm1, [qword {(nuint)promptPos}]", // Move the skill info button prompt to the right
+                    "push rax",
+                    $"mov rax, [qword {promptPosPtr}]",
+                    $"movss xmm1, [rax]", // Move the skill info button prompt to the right
+                    "pop rax",
                     "label endHook"
                 };
 

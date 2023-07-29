@@ -91,5 +91,40 @@ namespace p3ppc.manualSkillInheritance
         {
             return (nuint)((*(int*)ptrAddress) + ptrAddress + 4);
         }
+
+        /// <summary>
+        /// Gets instructions to compare the value of a pointer
+        /// </summary>
+        /// <param name="pointer">The address of the pointer</param>
+        /// <param name="cmpValue">The value to compare to</param>
+        /// <param name="cmpSize">The size of the comparison (byte, word, dword, qword)</param>
+        /// <returns>Assembly instructions that will compare the value being pointed to</returns>
+
+        internal static string CmpValue(nint pointer, int cmpValue, string cmpSize)
+        {
+            return
+            $"push rax\n" +
+            $"mov rax, [qword {pointer}]\n" +
+            $"cmp [rax], {cmpSize} {cmpValue}\n" +
+            $"pop rax";
+        }
+
+        /// <summary>
+        /// Gets instructions to set the value of a pointer
+        /// </summary>
+        /// <param name="pointer">The address of the pointer</param>
+        /// <param name="cmpValue">The value to set to</param>
+        /// <param name="cmpSize">The size of the value (byte, word, dword, qword)</param>
+        /// <returns>Assembly instructions that will set the value being pointed to</returns>
+
+        internal static string SetValue(nint pointer, int cmpValue, string cmpSize)
+        {
+            return
+            $"push rax\n" +
+            $"mov rax, [qword {pointer}]\n" +
+            $"mov [rax], {cmpSize} {cmpValue}\n" +
+            $"pop rax";
+        }
+
     }
 }

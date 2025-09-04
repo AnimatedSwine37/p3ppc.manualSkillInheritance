@@ -1,0 +1,13 @@
+[msg msg_combine_HELP004 [Igor]]
+[s][bup 15 161 0 1]A Persona created through fusion may[n]inherit the skills possessed by its[n]precursors.[n][w][e]
+[s]In other words, it's possible to give[n]a Persona skills that it could never[n]learn on its own.[n][w][e]
+[s]You should keep this in mind when[n]you're trying to create a powerful[n]Persona.[n][w][e]
+[s]The mechanism of skill inheritance is[n]not completely understood...[n][w][e]
+[s]but there are two key points I'd[n]like to share with you.[n][w][e]
+[s]First, the skills that can be[n]inherited depends on what the expected[n]Persona is.[n][w][e]
+[s]...I can give you more details on this[n]some other time.[n][w][e]
+[s]Second, the more skills the original[n]Personas possess, the more skills the[n]resulting Persona will inherit.[n][w][e]
+[s]...Please remember this.[n][w][e]
+
+[msg combine_skill_choose [Igor]]
+[s]Please choose the skills you would like[n]to pass on.[n][w][e]

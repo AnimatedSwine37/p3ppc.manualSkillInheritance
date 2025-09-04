@@ -27,15 +27,6 @@
   <Import Project="Reloaded.Checks.targets" />
 
   <ItemGroup>
-    <None Remove="Files\French\umd0\facility\combine.bin" />
-    <None Remove="Files\French\umd0\facility\combine\inheritance.spr" />
-    <None Remove="Files\Japanese\umd0\facility\combine.bin" />
-    <None Remove="Files\Japanese\umd0\facility\combine\inheritance.spr" />
-    <None Remove="Files\Spanish\umd0\facility\combine.bin" />
-    <None Remove="Files\Spanish\umd0\facility\combine\inheritance.spr" />
-    <None Remove="Files\Traditional_Chinese\umd0\facility\combine.bin" />
-    <None Remove="Files\Traditional_Chinese\umd0\facility\combine\inheritance.spr" />
-    <None Remove="ModConfig.json" />
     <None Remove="Publish.ps1" />
     <None Remove="BuildLinked.ps1" />
     <None Remove="Reloaded.Trimming.targets" />
@@ -43,42 +34,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Files\French\umd0\facility\combine.bin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\French\umd0\facility\combine\inheritance.spr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Japanese\umd0\facility\combine.bin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Japanese\umd0\facility\combine\inheritance.spr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Spanish\umd0\facility\combine.bin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Spanish\umd0\facility\combine\inheritance.spr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Traditional_Chinese\umd0\facility\combine.bin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Files\Traditional_Chinese\umd0\facility\combine\inheritance.spr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="ModConfig.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Update="Files\English\umd0\facility\combine.bin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Files\English\umd0\facility\combine\inheritance.spr">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Preview.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Content Include="FEmulator\**">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="P5REssentials\**">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -86,6 +50,7 @@
     <PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
     <PackageReference Include="Reloaded.Mod.Interfaces" Version="2.3.0" ExcludeAssets="runtime" />
     <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
+    <PackageReference Include="Reloaded.Universal.Localisation.Framework.Interfaces" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

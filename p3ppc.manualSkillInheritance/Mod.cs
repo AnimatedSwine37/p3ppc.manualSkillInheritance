@@ -20,6 +20,7 @@ using static p3ppc.manualSkillInheritance.Models.FileUtils;
 using static p3ppc.manualSkillInheritance.UI.Colours;
 using static p3ppc.manualSkillInheritance.UI.Sprites;
 using CriFs.V2.Hook.Interfaces;
+using Reloaded.Universal.Localisation.Framework.Interfaces;
 
 namespace p3ppc.manualSkillInheritance
 {
@@ -106,6 +107,8 @@ namespace p3ppc.manualSkillInheritance
 
         private Dictionary<Position, ColourIncreasePair> _outlineColours = new();
 
+        private Language _language;
+
         public Mod(ModContext context)
         {
             _modLoader = context.ModLoader;
@@ -132,9 +135,20 @@ namespace p3ppc.manualSkillInheritance
                 Utils.LogError($"Unable to get controller for CriFs Lib, things will not work :(");
                 return;
             }
+            
+            var localisationFrameworkController = _modLoader.GetController<ILocalisationFramework>();
+            if (localisationFrameworkController == null || !localisationFrameworkController.TryGetTarget(out var localisationFrameworkApi))
+            {
+                Utils.LogError($"Unable to get controller for Localisation Framework, things will not work :(");
+                return;
+            }
 
-            criFsApi.AddProbingPath($"Files{Path.DirectorySeparatorChar}{_configuration.TextLanguage}");
-
+            if (!localisationFrameworkApi.TryGetLanguage(out _language))
+            {
+                Utils.LogError("Failed to get the language from localisation framework. Things might look funny...");
+                _language = Language.English;
+            }
+            
             _ui = new UIUtils(startupScanner, _hooks, _configuration);
             _files = new FileUtils(_hooks, startupScanner);
             
@@ -968,8 +982,8 @@ namespace p3ppc.manualSkillInheritance
             var sprIndex = _state == InheritanceState.MenuHidden ? (int)InheritanceSprite.DisplayOn : (int)InheritanceSprite.DisplayOff;
             var xpos = 304; 
             var ypos = 256.5f;
-            if (_configuration.TextLanguage == Config.Language.Spanish) xpos = 328;
-            else if (_configuration.TextLanguage == Config.Language.Japanese)
+            if (_language == Language.Spanish) xpos = 328;
+            else if (_language == Language.Japanese)
             {
                 xpos = 310;
                 ypos = 255.5f;

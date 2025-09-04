@@ -1,0 +1,13 @@
+[msg msg_combine_HELP004 [Igor]]
+[s][bup 15 161 0 1]Une Persona créée par fusion peut[n]hériter des compétences des[n]Personae parentes.[n][w][e]
+[s]En somme, tu peux donner à une Persona[n]des compétences qu'elle n'apprendrait[n]jamais toute seule.[n][w][e]
+[s]Tu devrais garder cela à l'esprit[n]quand tu essaies de créer[n]une Persona puissante.[n][w][e]
+[s]Le mécanisme de transmission de[n]compétence reste mystérieux...[n][w][e]
+[s]mais il y a deux points clés que[n]je dois t'expliquer.[n][w][e]
+[s]Déjà, la probabilité de transmission[n]d'une compétence dépend de la[n]Persona attendue.[n][w][e]
+[s]... Je peux te donner plus[n]de détails à l'occasion.[n][w][e]
+[s]Ensuite, plus les Personae parentes ont de[n]compétences, plus la nouvelle Persona[n]en héritera.[n][w][e]
+[s]... Essaie de t'en souvenir.[n][w][e]
+
+[msg combine_skill_choose [Igor]]
+[s]Choisis les compétences[n]que tu veux transférer.[n][w][e]
